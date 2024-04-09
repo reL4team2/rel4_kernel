@@ -30,7 +30,6 @@ use crate::kernel::boot::{current_fault, current_lookup_fault};
 use self::invocation::handleInvocation;
 
 
-
 #[no_mangle]
 pub fn slowpath(syscall: usize) {
     // debug!("enter slow path: {}", syscall as isize);
@@ -164,6 +163,7 @@ fn handle_recv(block: bool) {
         CapTag::CapEndpointCap => {
             if unlikely(ipc_cap.get_ep_can_receive() == 0) {
                 unsafe {
+                    debug!("handle recv fault");
                     current_lookup_fault = lookup_fault_t::new_missing_cap(0);
                     current_fault = seL4_Fault_t::new_cap_fault(ep_cptr, 1);
                 }

@@ -1,4 +1,4 @@
-mod config;
+pub(crate) mod config;
 mod operations;
 
 use bit_field::BitField;
@@ -45,11 +45,22 @@ lazy_static! {
     pub static ref UINTR_RECV_ALLOCATOR: Mutex<IndexAllocator<UINTC_ENTRY_NUM>> = Mutex::new(IndexAllocator::<UINTC_ENTRY_NUM>::new());
     pub static ref UINTR_ST_POOL_ALLOCATOR: Mutex<IndexAllocator<16>> = Mutex::new(IndexAllocator::<16>::new());
     pub static ref UINTR_ST_ENTRY_ALLOCATOR: Mutex<[IndexAllocator<UINTC_ENTRY_NUM>; 16]> = Mutex::new([IndexAllocator::<UINTC_ENTRY_NUM>::new(); 16]);
+    pub static ref KERNEL_SENDER_POOL_IDX: Mutex<usize> = Mutex::new(UINTR_ST_POOL_ALLOCATOR.lock().allocate().unwrap());
+    pub static ref NET_UINTR_IDX: Mutex<usize> = unsafe {
+        let uist_idx = *KERNEL_SENDER_POOL_IDX.lock();
+        let idx = UINTR_ST_ENTRY_ALLOCATOR.lock().get_mut(uist_idx).unwrap().allocate().unwrap();
+        let entry = convert_to_mut_type_ref::<UIntrSTEntry>(UINTR_ST_POOL.as_ptr().offset(((
+            uist_idx * UINTC_ENTRY_NUM + idx) * core::mem::size_of::<UIntrSTEntry>()) as isize) as usize);
+        entry.set_valid(true);
+        entry.set_vec(0);
+        entry.set_index(0);
+        Mutex::new(idx)
+    };
 }
 
 #[no_mangle]
 #[link_section = ".boot.uintr"]
-static mut UINTR_ST_POOL: [u8; core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM * 16] = [0; core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM * 16];
+pub(crate) static mut UINTR_ST_POOL: [u8; core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM * 16] = [0; core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM * 16];
 
 #[derive(Debug)]
 pub struct UIntrSTEntry(u64);

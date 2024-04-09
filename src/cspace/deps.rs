@@ -78,7 +78,7 @@ pub fn finaliseCap(cap: &cap_t, _final: bool, _exposed: bool) -> finaliseCap_ret
             if _final {
                 let ntfn =  convert_to_mut_type_ref::<notification_t>(cap.get_nf_ptr());
                 ntfn.safe_unbind_tcb();
-                ntfn.cacncel_all_signal();
+                ntfn.cancel_call_signal();
             }
             fc_ret.remainder = cap_t::new_null_cap();
             fc_ret.cleanupInfo = cap_t::new_null_cap();

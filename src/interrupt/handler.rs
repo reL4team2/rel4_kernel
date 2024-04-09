@@ -10,7 +10,10 @@ use crate::task_manager::ipc::notification_t;
 use crate::config::{irqInvalid, maxIRQ};
 use crate::interrupt::*;
 use crate::riscv::resetTimer;
-use crate::uintc::UIntrReceiver;
+use crate::uintc::{KERNEL_SENDER_POOL_IDX, NET_UINTR_IDX, UIntrReceiver, UIntrSTEntry};
+use crate::uintr;
+use crate::uintr::uipi_send;
+use crate::vspace::kpptr_to_paddr;
 
 
 #[no_mangle]
@@ -41,6 +44,20 @@ pub fn handleInterruptEntry() -> exception_t {
     exception_t::EXCEPTION_NONE
 }
 
+static mut NET_INTR_CNT: usize = 0;
+static NET_INTR_THRESHOLD: usize = 3;
+
+static SECOND_TIMER: usize = 50;
+static mut SECOND_TIMER_CNT: usize = 0;
+pub unsafe fn send_net_uintr() {
+    let uist_idx = *KERNEL_SENDER_POOL_IDX.lock();
+    let offset = *NET_UINTR_IDX.lock();
+    let frame_addr = crate::uintc::UINTR_ST_POOL.as_ptr().offset((uist_idx * core::mem::size_of::<UIntrSTEntry>() * crate::uintc::config::UINTC_ENTRY_NUM) as isize) as usize;
+    uintr::suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
+    uipi_send(offset);
+    NET_INTR_CNT = 0;
+}
+
 #[no_mangle]
 pub fn handleInterrupt(irq: usize) {
     unsafe {
@@ -62,20 +79,15 @@ pub fn handleInterrupt(irq: usize) {
             mask_interrupt(true, irq);
             debug!("Received disabled IRQ: {}\n", irq);
         }
-        IRQState::IRQSignal => {
+        IRQState::IRQSignal => unsafe {
             // debug!("IRQSignal");
             let handler_slot = get_irq_handler_slot(irq);
             let handler_cap = &handler_slot.cap;
             if handler_cap.get_cap_type() == CapTag::CapNotificationCap
                 && handler_cap.get_nf_can_send() != 0 {
+                send_net_uintr();
+                convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
 
-                let nf = convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr());
-                let recv_idx = nf.get_recv_idx();
-                // debug!("send uipi, recv_idx: {}", recv_idx);
-                let mut uirs = UIntrReceiver::from(recv_idx);
-                uirs.irq |= 1;
-                uirs.sync(recv_idx);
-                // nf.send_signal(handler_cap.get_nf_badge());
             } else {
                 debug!("no ntfn signal");
             }

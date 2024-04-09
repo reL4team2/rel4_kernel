@@ -65,7 +65,7 @@ impl notification_t {
     }
 
     #[inline]
-    pub fn cacncel_all_signal(&mut self) {
+    pub fn cancel_call_signal(&mut self) {
         if self.get_state() ==  NtfnState::Waiting {
             let mut op_thread = convert_to_option_mut_type_ref::<tcb_t>(self.get_queue_head());
             self.set_state(NtfnState::Idle as usize);
@@ -109,7 +109,7 @@ impl notification_t {
         match self.get_state() {
             NtfnState::Idle => {
                 if let Some(tcb) = convert_to_option_mut_type_ref::<tcb_t>(self.get_bound_tcb()) {
-                    if tcb.get_state() == ThreadState::ThreadStateBlockedOnReceive{
+                    if tcb.get_state() == ThreadState::ThreadStateBlockedOnReceive {
                         tcb.cancel_ipc();
                         set_thread_state(tcb, ThreadState::ThreadStateRunning);
                         tcb.set_register(badgeRegister, badge);

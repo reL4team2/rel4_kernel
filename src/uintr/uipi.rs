@@ -1,5 +1,5 @@
 pub unsafe fn uipi_send(index: usize) {
-    core::arch::asm!(".insn i 0b1111011, 0b010, x0, {}, 0x0", in(reg) index);
+    core::arch::asm!(".insn r 0b1111011, 0b110, 0b0000000, x0, {}, x0", in(reg) index);
 }
 
 pub unsafe fn uipi_read() -> usize {
