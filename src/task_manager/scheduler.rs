@@ -545,3 +545,25 @@ fn idle_thread() {
         }
     }
 }
+
+fn get_idle_cpu_index() -> isize {
+    unsafe {    
+        for (index, flag) in cpu_idle.into_iter().enumerate() {
+            if flag {
+                return index as isize;
+            }
+        }
+    }
+    return -1;
+}
+
+// return selected CPU index
+fn try_run_async_syscall_coroutine() -> Option<usize> {
+    let cpu_index = get_idle_cpu_index();
+    if cpu_index < 0 {
+        return None;
+    }
+    // todo: run async syscall coroutine
+    //IPI河间终端，false,ipi = 0(irq_async_syscall_ipi), mask:CPU index
+    return Some(cpu_index as usize);
+}

@@ -7,7 +7,7 @@ use core::pin::Pin;
 use core::sync::atomic::{AtomicU32, Ordering};
 use core::task::{Context, Poll, Waker};
 
-#[derive(Eq, PartialEq, Debug, Clone, Copy, Hash, Ord, PartialOrd)]
+#[derive(Default, Eq, PartialEq, Debug, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct CoroutineId(pub u32);
 
 impl CoroutineId {

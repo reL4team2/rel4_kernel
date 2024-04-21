@@ -88,8 +88,15 @@ pub fn decode_invocation(label: MessageLabel, length: usize, slot: &mut cte_t, c
                         unsafe { current_syscall_error._type = seL4_TruncatedMessage; }
                         return exception_t::EXCEPTION_SYSCALL_ERROR;
                     }
+                    debug!("UintrRegisterAsyncSyscall: Enter");
                     let new_buffer_cap = new_buffer_slot.unwrap().cap;
-                    let cid = coroutine_spawn(Box::pin(async_syscall_handler(*cap, new_buffer_cap, get_currenct_thread())));
+                    //注册发送端，获取sender_id
+                    let sender_id = crate::uintc::register_sender_async_syscall(cap);
+                    debug!("UintrRegisterAsyncSyscall: sender id = {:?}", sender_id);
+                    //生成异步系统调用处理协程并将cid保存至tcb
+                    let cid = coroutine_spawn(Box::pin(async_syscall_handler(*cap, new_buffer_cap, get_currenct_thread(), sender_id as usize)));
+                    get_currenct_thread().asyncSysHandlerCid = Some(cid.0);
+                    debug!("UintrRegisterAsyncSyscall: coroutine id = {:?}", cid);
                     unsafe {
                         NEW_BUFFER_MAP.push(NewBufferMap {
                             buf: &mut *(new_buffer_cap.get_frame_base_ptr() as *mut NewBuffer),

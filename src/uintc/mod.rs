@@ -196,6 +196,32 @@ pub fn register_sender(ntfn_cap: &cap_t) {
     debug!("[register_sender] offset: {}", offset);
 }
 
+pub fn register_sender_async_syscall(ntfn_cap: &cap_t) -> isize {
+    assert_eq!(ntfn_cap.get_cap_type(), CapTag::CapNotificationCap);
+    let uist_idx = *KERNEL_SENDER_POOL_IDX.lock();
+    debug!("register sender async syscall: uist_idx: {:#x}", uist_idx);
+    let uiste_idx = UINTR_ST_ENTRY_ALLOCATOR.lock().get_mut(uist_idx).unwrap().allocate();
+    if uiste_idx.is_none() {
+        debug!("register sender async syscall: fail to alloc uiste. {}", uist_idx);
+        return -1;
+    }
+    let offset = uiste_idx.unwrap();
+    let entry = unsafe {
+        debug!("register sender async syscall: UINTR_ST_POOL.as_ptr(): {:#x}", UINTR_ST_POOL.as_ptr() as usize);
+        convert_to_mut_type_ref::<UIntrSTEntry>(UINTR_ST_POOL.as_ptr().offset(((uist_idx * UINTC_ENTRY_NUM + offset) * core::mem::size_of::<UIntrSTEntry>()) as isize) as usize)
+    };
+    debug!("register sender async syscall: entry.as_ptr(): {:#x}", entry as *const UIntrSTEntry as usize);
+    entry.set_valid(true);
+    entry.set_vec(0);
+    debug!("register sender async syscall: recv_idx: {}", convert_to_type_ref::<notification_t>(ntfn_cap.get_nf_ptr()).get_recv_idx());
+    entry.set_index(convert_to_type_ref::<notification_t>(ntfn_cap.get_nf_ptr()).get_recv_idx());
+    debug!("register sender async syscall: entry: {:?}", entry);
+    // debug!("{} {} {} {} {}", entry.get_send_vec(), entry.get_uirs_index(), entry.get_valid(), entry.get_reserved0(), entry.get_reserved1());
+    debug!("register_sender async syscall: offset: {}", offset);
+    return offset as isize;
+}
+
+
 pub fn init() {
     uintr::suicfg::write(pptr_to_paddr(UINTC_BASE));
 }

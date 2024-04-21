@@ -14,6 +14,7 @@ use crate::uintc::{KERNEL_SENDER_POOL_IDX, NET_UINTR_IDX, UIntrReceiver, UIntrST
 use crate::uintr;
 use crate::uintr::uipi_send;
 use crate::vspace::kpptr_to_paddr;
+use core::sync::atomic::Ordering::SeqCst;
 
 
 #[no_mangle]
@@ -93,16 +94,20 @@ pub fn handleInterrupt(irq: usize) {
             }
         }
         IRQState::IRQTimer => {
-            for item in unsafe { &NEW_BUFFER_MAP } {
+            // for item in unsafe { &NEW_BUFFER_MAP } {
 
-                let new_buffer = item.buf;
-                // debug!("new buffer addr: {:#x}", new_buffer as *const NewBuffer as usize);
-                if new_buffer.recv_req_status == true {
-                    debug!("wake cid: {}", item.cid.0);
-                    coroutine_wake(&item.cid);
-                }
+            //     let new_buffer = item.buf;
+            //     // debug!("new buffer addr: {:#x}", new_buffer as *const NewBuffer as usize);
+            //     if new_buffer.recv_req_status.load(SeqCst) {
+            //         debug!("handleInterrupt: wake cid: {}", item.cid.0);
+            //         coroutine_wake(&item.cid);
+            //     }
+            //     // debug!("wake cid: {}", item.cid.0);
+            //     // coroutine_wake(&item.cid);
+            // }
+            if cpu_id() == 3 {
+                coroutine_run_until_blocked();
             }
-            coroutine_run_until_blocked();
             timerTick();
             resetTimer();
         }
