@@ -36,6 +36,9 @@ def parse_args():
 
     parser.add_argument('-f', '--fpga_board', dest="fpga_net_test", action="store_true",
                         help="run rust root task demo")
+
+    parser.add_argument('-p', '--push_remote', dest="push_remote", type=str,
+                        help="push remote machine if u are docker container", default="")
     args = parser.parse_args()
     return args
 
@@ -58,6 +61,9 @@ def install_kernel():
                     " && ninja -C build all && ninja -C build install"
     exec_shell(shell_command)
 
+def push_remote(remote_addr):
+    shell_command = "ssh ctrlz@" + remote_addr + " \"bash -s\" < ./push_remote.sh"
+    exec_shell(shell_command)
 
 if __name__ == "__main__":
     args = parse_args()
@@ -69,7 +75,7 @@ if __name__ == "__main__":
         os.makedirs(build_dir)
 #     os.makedirs(build_dir)
     if args.rust_test == True:
-        rt_setting_path = os.path.abspath("../projects/rust-root-task-demo/easy-settings.cmake")
+        rt_setting_path = os.path.abspath("../projects/rust-microkit-demo/easy-settings.cmake")
         shell_command = "cd .. && ln -snf " + rt_setting_path + " ./easy-settings.cmake"
         if not exec_shell(shell_command):
             clean_config()
@@ -100,8 +106,13 @@ if __name__ == "__main__":
             shell_command += " -DSMP=TRUE"
         if args.uintr_enable:
             shell_command += " -DUINTR=TRUE"
-        shell_command += " && ninja"
+        shell_command += " && ninja -v"
         if not exec_shell(shell_command):
             clean_config()
             sys.exit(-1)
         clean_config()
+
+    if args.push_remote != "":
+        push_remote(args.push_remote)
+
+

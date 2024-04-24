@@ -1,7 +1,11 @@
 use crate::common::sel4_config::PPTR_BASE;
 
+#[cfg(feature = "board_qemu")]
 /// UINTC base
 pub const UINTC_BASE: usize = 0x2F1_0000 + PPTR_BASE;
+
+#[cfg(feature = "board_lrv")]
+pub const UINTC_BASE: usize = 0x300_0000 + PPTR_BASE;
 
 /// UINTC size
 pub const UINTC_SIZE: usize = 0x4000;
