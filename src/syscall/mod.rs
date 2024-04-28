@@ -5,7 +5,7 @@ pub mod syscall_reply;
 use core::intrinsics::unlikely;
 use log::debug;
 use crate::common::fault::{FaultType, lookup_fault_t, seL4_Fault_t};
-use crate::common::sel4_config::tcbCaller;
+use crate::common::sel4_config::{PPTR_BASE_OFFSET, tcbCaller};
 
 pub const SysCall: isize = -1;
 pub const SysReplyRecv: isize = -2;

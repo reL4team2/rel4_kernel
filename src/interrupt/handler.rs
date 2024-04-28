@@ -76,16 +76,17 @@ pub fn handleInterrupt(irq: usize) {
     match get_irq_state(irq) {
         IRQState::IRQInactive => {
             debug!("IRQInactive");
-            mask_interrupt(true, irq);
+            // mask_interrupt(true, irq);
             debug!("Received disabled IRQ: {}\n", irq);
         }
         IRQState::IRQSignal => unsafe {
-            // debug!("IRQSignal");
+            debug!("IRQSignal");
+            // eth_recv();
             let handler_slot = get_irq_handler_slot(irq);
             let handler_cap = &handler_slot.cap;
             if handler_cap.get_cap_type() == CapTag::CapNotificationCap
                 && handler_cap.get_nf_can_send() != 0 {
-                send_net_uintr();
+                // send_net_uintr();
                 convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
 
             } else {

@@ -22,7 +22,7 @@ use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 use crate::boot::utils::paddr_to_pptr_reg;
-use crate::interrupt::{init_hart, init_irq_controller, set_sie_mask};
+use crate::interrupt::{init_hart, init_irq_controller, net_init, set_sie_mask};
 use crate::common::sbi::{set_timer, get_time};
 use crate::structures::{ndks_boot_t, region_t, p_region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion, v_region_t};
 use crate::config::*;
@@ -78,9 +78,9 @@ fn init_cpu() {
     #[cfg(feature = "ENABLE_UINTC")]
     crate::uintc::init();
 
-    unsafe {
-        test_uintr(cpu_index_to_id(cpu_id()));
-    }
+    // unsafe {
+    //     test_uintr(cpu_index_to_id(cpu_id()));
+    // }
 }
 
 fn calculate_extra_bi_size_bits(size: usize) -> usize {
@@ -226,6 +226,7 @@ pub fn try_init_kernel(
     init_cpu();
     init_irq_controller();
     init_hart();
+    // net_init();
 
     let dtb_p_reg = init_dtb(dtb_size, dtb_phys_addr, &mut extra_bi_size);
     if dtb_p_reg.is_none() {

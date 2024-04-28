@@ -75,7 +75,7 @@ if __name__ == "__main__":
         os.makedirs(build_dir)
 #     os.makedirs(build_dir)
     if args.rust_test == True:
-        rt_setting_path = os.path.abspath("../projects/rust-microkit-demo/easy-settings.cmake")
+        rt_setting_path = os.path.abspath("../projects/rust-root-task-demo/easy-settings.cmake")
         shell_command = "cd .. && ln -snf " + rt_setting_path + " ./easy-settings.cmake"
         if not exec_shell(shell_command):
             clean_config()
