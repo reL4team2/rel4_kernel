@@ -109,7 +109,7 @@ pub fn decode_untyed_invocation(inv_label: MessageLabel, length: usize, slot: &m
 
 
 #[inline]
-fn check_object_type(new_type: ObjectType, user_obj_size: usize) -> exception_t {
+pub fn check_object_type(new_type: ObjectType, user_obj_size: usize) -> exception_t {
     if new_type == ObjectType::CapTableObject && user_obj_size == 0 {
         debug!("Untyped Retype: Requested CapTable size too small.");
         unsafe {
@@ -131,7 +131,7 @@ fn check_object_type(new_type: ObjectType, user_obj_size: usize) -> exception_t 
 }
 
 #[inline]
-fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) -> exception_t {
+pub fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) -> exception_t {
     let target_node_cap = if node_depth == 0 {
         get_extra_cap_by_index(0).unwrap().cap
     } else {
@@ -159,7 +159,7 @@ fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) 
 
 
 #[inline]
-fn check_cnode_slot(node_cap: &cap_t, node_offset: usize, node_window: usize) -> exception_t {
+pub fn check_cnode_slot(node_cap: &cap_t, node_offset: usize, node_window: usize) -> exception_t {
     let node_size = 1 << node_cap.get_cnode_radix();
     if node_offset > (node_size - 1) {
         debug!("Untyped Retype: Destination node offset {} too large.", node_offset);
