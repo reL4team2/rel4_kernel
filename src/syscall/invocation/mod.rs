@@ -1,7 +1,7 @@
 pub mod decode;
 mod invoke_tcb;
-mod invoke_cnode;
-mod invoke_untyped;
+pub mod invoke_cnode;
+pub mod invoke_untyped;
 mod invoke_mmu_op;
 pub mod invoke_irq;
 
