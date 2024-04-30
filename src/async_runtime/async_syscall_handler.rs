@@ -12,7 +12,7 @@ use crate::uintc::{KERNEL_SENDER_POOL_IDX, NET_UINTR_IDX, UIntrReceiver, UIntrST
 use core::sync::atomic::Ordering::SeqCst;
 use core::intrinsics::unlikely;
 use crate::kernel::boot::current_syscall_error;
-use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF, invocation::{invoke_cnode::invoke_cnode_copy, invoke_untyped::invoke_untyped_retype}, invocation::decode::decode_untyped_invocation::{check_object_type, get_target_cnode ,check_cnode_slot}};
+use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF, invocation::{invoke_cnode::*, invoke_untyped::invoke_untyped_retype}, invocation::decode::decode_untyped_invocation::{check_object_type, get_target_cnode ,check_cnode_slot}};
 use crate::syscall::utils::lookup_slot_for_cnode_op;
 // 每个线程对应一个内核syscall handler协程
 // 每个线程在用户态只能发现自己的内核协程不在线
@@ -58,6 +58,9 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
                 }
                 AsyncMessageLabel::TCBUnbindNotification => {
                     handle_async_tcb_unbind_notification(&mut item, tcb);
+                }
+                AsyncMessageLabel::CNodeDelete | AsyncMessageLabel::CNodeCopy | AsyncMessageLabel::CNodeMint => {
+                    handle_async_cnode_syscall(&mut item, tcb, label);
                 }
                 _ => {
                     handle_async_unknown_label(&mut item, tcb);
@@ -299,44 +302,15 @@ fn handle_async_tcb_unbind_notification(item: &mut IPCItem, tcb: &mut tcb_t) {
     item.extend_msg[0] = AsyncErrorLabel::NoError.into();
 }
 
-fn handle_async_cnode_delete(item: &mut IPCItem, tcb: &mut tcb_t) {
-    // 根据CPtr获取slot
-    let cnode_cptr = item.extend_msg[0] as usize;
-    let index = item.extend_msg[1] as usize;
-    let depth = item.extend_msg[2] as usize;
-    let cnode_lu_ret = tcb.lookup_slot(cnode_cptr);
-    if unlikely(cnode_lu_ret.status != exception_t::EXCEPTION_NONE) {
-        debug!("handle_async_cnode_delete: Invocation of invalid cap {:#x}.", cnode_cptr);
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
-    }
-    let cnode_slot = unsafe {&mut *cnode_lu_ret.slot };
-    let cnode_cap = cnode_slot.cap;
-    // 获取目标slot
-    let slot_lu_ret = lookup_slot_for_cnode_op(false, &cnode_cap, index, depth);
-    if slot_lu_ret.status != exception_t::EXCEPTION_NONE {
-        debug!("handle_async_cnode_delete: CNode operation: Target slot invalid.");
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
-    }
-    let dest_slot = convert_to_mut_type_ref::<cte_t>(slot_lu_ret.slot as usize);
-    let error = dest_slot.delete_all(true);
-    if error == exception_t::EXCEPTION_NONE {
-        item.extend_msg[0] = AsyncErrorLabel::NoError.into();
-    } else {
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-    }
-}
-
-fn handle_async_cnode_copy(item: &mut IPCItem, tcb: &mut tcb_t) {
-    // dest有关参数
+fn handle_async_cnode_syscall(item: &mut IPCItem, tcb: &mut tcb_t, label: AsyncMessageLabel) {
+    let label = AsyncMessageLabel::from(item.msg_info);
+    // 根据dest_root_cptr获取dest_root_cap
     let dest_root_cptr = item.extend_msg[0] as usize;
     let dest_index = item.extend_msg[1] as usize;
     let dest_depth = item.extend_msg[2] as usize;
-    // 获取dest_slot
     let dest_root_lu_ret = tcb.lookup_slot(dest_root_cptr);
     if unlikely(dest_root_lu_ret.status != exception_t::EXCEPTION_NONE) {
-        debug!("handle_async_cnode_copy: Invocation of invalid dest root cap {:#x}.", dest_root_cptr);
+        debug!("handle_async_cnode_syscall: Invocation of invalid cap {:#x}.", dest_root_cptr);
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
         return;
     }
@@ -350,10 +324,22 @@ fn handle_async_cnode_copy(item: &mut IPCItem, tcb: &mut tcb_t) {
         return;
     }
     let dest_slot = convert_to_mut_type_ref::<cte_t>(dest_slot_lu_ret.slot as usize);
-    if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
-        debug!("handle_async_cnode_copy: CNode Copy: Destination not empty.");
+    let error = match label {
+        AsyncMessageLabel::CNodeCopy | AsyncMessageLabel::CNodeMint => handle_async_cnode_syscall_with_two_slot(item, tcb, dest_slot, label),
+        AsyncMessageLabel::CNodeDelete => handle_async_cnode_delete(dest_slot),
+        _ => exception_t::EXCEPTION_SYSCALL_ERROR
+    };
+    if error == exception_t::EXCEPTION_NONE {
+        item.extend_msg[0] = AsyncErrorLabel::NoError.into();
+    } else {
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
+    }
+}
+
+fn handle_async_cnode_syscall_with_two_slot(item: &mut IPCItem, tcb: &mut tcb_t, dest_slot: &mut cte_t, label: AsyncMessageLabel) -> exception_t{
+    if dest_slot.cap.get_cap_type() != CapTag::CapNullCap {
+        debug!("handle_async_cnode_syscall_with_two_slot: CNode Copy: Destination not empty.");
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     // src有关参数
     let src_root_cptr = item.extend_msg[3] as usize;
@@ -362,32 +348,47 @@ fn handle_async_cnode_copy(item: &mut IPCItem, tcb: &mut tcb_t) {
     // 获取src_slot
     let src_root_lu_ret = tcb.lookup_slot(src_root_cptr);
     if unlikely(src_root_lu_ret.status != exception_t::EXCEPTION_NONE) {
-        debug!("handle_async_cnode_copy: Invocation of invalid src root cap {:#x}.", src_root_cptr);
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
+        debug!("handle_async_cnode_syscall_with_two_slot: Invocation of invalid src root cap {:#x}.", src_root_cptr);
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let src_root_slot = unsafe {&mut *src_root_lu_ret.slot };
     let src_root_cap = src_root_slot.cap;
     // 获取src_slot
-    let src_slot_lu_ret = lookup_slot_for_cnode_op(false, &src_root_cap, src_index, src_depth);
+    let src_slot_lu_ret = lookup_slot_for_cnode_op(true, &src_root_cap, src_index, src_depth);
     if src_slot_lu_ret.status != exception_t::EXCEPTION_NONE {
-        debug!("handle_async_cnode_copy: CNode operation: Src Target slot invalid.");
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
+        debug!("handle_async_cnode_syscall_with_two_slot: CNode operation: Src Target slot invalid.");
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
     let src_slot = convert_to_mut_type_ref::<cte_t>(src_slot_lu_ret.slot as usize);
     if src_slot.cap.get_cap_type() == CapTag::CapNullCap {
-        debug!("handle_async_cnode_copy: CNode Copy: Source empty.");
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
-        return;
+        debug!("handle_async_cnode_syscall_with_two_slot: CNode operation: Source empty.");
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    // CapRight
-    let cap_right_word = item.extend_msg[6] as usize;
-    let cap_right = seL4_CapRights_t::from_word(cap_right_word);
-    let error = invoke_cnode_copy(src_slot, dest_slot, cap_right);
-    if error == exception_t::EXCEPTION_NONE {
-        item.extend_msg[0] = AsyncErrorLabel::NoError.into();
-    } else {
-        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+    match label {
+        AsyncMessageLabel::CNodeCopy => {
+            let cap_right_word = item.extend_msg[6] as usize;
+            let cap_right = seL4_CapRights_t::from_word(cap_right_word);
+            invoke_cnode_copy(src_slot, dest_slot, cap_right)
+        }
+        AsyncMessageLabel::CNodeMint => {
+            // CapRight
+            let cap_right_word = item.extend_msg[6] as usize;
+            let cap_right = seL4_CapRights_t::from_word(cap_right_word);
+            // Badge
+            let badge = item.extend_msg[7] as usize;
+            invoke_cnode_mint(src_slot, dest_slot, cap_right, badge)
+        }
+        AsyncMessageLabel::CNodeMove => {
+            invoke_cnode_move(src_slot, dest_slot)
+        }
+        AsyncMessageLabel::CNodeMutate => {
+            let cap_data = item.extend_msg[6] as usize;
+            invoke_cnode_mutate(src_slot, dest_slot, cap_data)
+        }
+        _ => exception_t::EXCEPTION_SYSCALL_ERROR
     }
+}
+
+fn handle_async_cnode_delete(dest_slot: &mut cte_t) -> exception_t{
+    dest_slot.delete_all(true)
 }
