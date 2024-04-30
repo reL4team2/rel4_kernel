@@ -143,12 +143,15 @@ impl UIntrReceiver {
     }
 }
 
+static ALLOCATE_ID_TO_RS_ID: [usize; 8] = [0, 5, 6, 7, 8, 9, 10, 11];
+
 pub fn register_receiver(ntfn: &mut notification_t, tcb: &mut tcb_t) {
     if tcb.tcbBoundNotification != ntfn.get_ptr() {
         debug!("fail to register uint receiver, need to bind ntfn first");
         return;
     }
-    if let Some(recv_index) = UINTR_RECV_ALLOCATOR.lock().allocate() {
+    if let Some(mut recv_index) = UINTR_RECV_ALLOCATOR.lock().allocate() {
+        recv_index = ALLOCATE_ID_TO_RS_ID[recv_index];
         debug!("recv index: {}", recv_index);
         ntfn.set_uintr_flag(1);
         ntfn.set_recv_idx(recv_index);
@@ -264,23 +267,21 @@ unsafe fn uist_init() {
     if let Some(uist_idx) = get_currenct_thread().uintr_inner.uist {
         let frame_addr = UINTR_ST_POOL.as_ptr().offset((uist_idx * core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM) as isize) as usize;
         // debug!("frame_addr: {:#x}", frame_addr);
-        uintr::suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
+        suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
     } else {
-        uintr::suist::write(0);
+        suist::write(0);
     }
 }
 
 static LOCK: Mutex<()> = Mutex::new(());
 
+
 pub unsafe fn test_uintr(hartid: usize) {
     let _lock = LOCK.lock();
     debug!("test uintr start, hartid: {}", hartid);
-    // suicfg::write(UINTC_BASE);
-
-    // assert_eq!(suicfg::read(), UINTC_BASE);
 
     // Enable receiver status.
-    let uirs_index = hartid;
+    let uirs_index = ALLOCATE_ID_TO_RS_ID[hartid];
     // Receiver on hart hartid
     *((UINTC_BASE + uirs_index * 0x20 + 8) as *mut u64) = ((hartid << 16) as u64) | 3;
 
@@ -304,19 +305,15 @@ pub unsafe fn test_uintr(hartid: usize) {
     entry.set_valid(true);
     entry.set_vec(hartid);
     // debug!("[register sender] recv_idx: {}", convert_to_type_ref::<notification_t>(ntfn_cap.get_nf_ptr()).get_recv_idx());
-    entry.set_index(hartid);
-    // assert_eq!(suist::read().bits(), (1 << 63) | (1 << 44) | frame.number());
-    // valid entry, uirs index = hartid, sender vector = hartid
-    // *(frame.start_address().value() as *mut u64) = ((hartid << 48) | (hartid << 16) | 1) as u64;
-    // *(frame as *mut u64) = ((hartid << 48) | (hartid << 16) | 1) as u64;
-    // Send uipi with first uist entry
+    entry.set_index(uirs_index);
+
     log::info!("Send UIPI!");
     uipi_send(0);
 
     loop {
-        if uintr::sip::read().usoft() {
-            log::debug!("Receive UINT!");
-            uintr::sip::clear_usoft();
+        if sip::read().usoft() {
+            debug!("Receive UINT!");
+            sip::clear_usoft();
             assert_eq!(uipi_read(), 1 << hartid);
             break;
         }

@@ -170,6 +170,10 @@ impl PlicTrait for RVPlic {
 
 pub type RV_PLIC = RVPlic;
 
+#[cfg(feature = "board_qemu")]
+pub fn plic_complete_claim(irq: usize) {
+
+}
 #[cfg(feature = "board_lrv")]
 pub fn plic_complete_claim(irq: usize) {
     let hart_id = cpu_index_to_id(CPU_IDX);
