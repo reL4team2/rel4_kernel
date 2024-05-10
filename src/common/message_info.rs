@@ -89,7 +89,7 @@ impl From<u32> for AsyncMessageLabel {
             2 => AsyncMessageLabel::RISCVPageTableMap,
             3 => AsyncMessageLabel::RISCVPageTableUnmap,
             4 => AsyncMessageLabel::RISCVPageMap,
-            5 => AsyncMessageLabel::RISCVPageTableUnmap,
+            5 => AsyncMessageLabel::RISCVPageUnmap,
             6 => AsyncMessageLabel::RISCVPageGetAddress,
             7 => AsyncMessageLabel::CNodeRevoke,
             8 => AsyncMessageLabel::CNodeDelete,
