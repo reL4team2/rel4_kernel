@@ -1,19 +1,21 @@
 use crate::BIT;
+use crate::MASK;
 use log::debug;
 use crate::async_runtime::new_buffer::{NewBuffer, IPCItem};
 use crate::async_runtime::utils::yield_now;
-use crate::common::{utils::convert_to_mut_type_ref, message_info::{AsyncMessageLabel, AsyncErrorLabel}, object::ObjectType, sbi::console_putchar, structures::exception_t, sel4_config::*};
+use crate::common::{utils::{convert_to_mut_type_ref, pageBitsForSize}, message_info::{AsyncMessageLabel, AsyncErrorLabel}, object::ObjectType, sbi::console_putchar, structures::exception_t, sel4_config::*};
 use crate::cspace::interface::{cap_t, cte_t, CapTag, seL4_CapRights_t};
 use crate::task_manager::{tcb_t, get_currenct_thread, ipc::notification_t};
 use crate::uintr;
 use crate::uintr::uipi_send;
-use crate::vspace::{kpptr_to_paddr, pptr_to_paddr};
+use crate::vspace::{checkVPAlignment, kpptr_to_paddr, pptr_to_paddr, find_vspace_for_asid, vm_attributes_t, pte_t};
 use crate::uintc::{KERNEL_SENDER_POOL_IDX, NET_UINTR_IDX, UIntrReceiver, UIntrSTEntry};
 use core::sync::atomic::Ordering::SeqCst;
 use core::intrinsics::unlikely;
 use crate::kernel::boot::current_syscall_error;
-use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF, invocation::{invoke_cnode::*, invoke_untyped::invoke_untyped_retype}, invocation::decode::decode_untyped_invocation::{check_object_type, get_target_cnode ,check_cnode_slot}};
+use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF, invocation::{invoke_cnode::*, invoke_untyped::invoke_untyped_retype, invoke_mmu_op::*}, invocation::decode::decode_untyped_invocation::{check_object_type, check_cnode_slot}};
 use crate::syscall::utils::lookup_slot_for_cnode_op;
+use crate::config::USER_TOP;
 // 每个线程对应一个内核syscall handler协程
 // 每个线程在用户态只能发现自己的内核协程不在线
 // 当线程陷入内核去激活协程时，所有的内核协程都不在线（因为内核独占）
@@ -59,8 +61,20 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
                 AsyncMessageLabel::TCBUnbindNotification => {
                     handle_async_tcb_unbind_notification(&mut item, tcb);
                 }
-                AsyncMessageLabel::CNodeDelete | AsyncMessageLabel::CNodeCopy | AsyncMessageLabel::CNodeMint => {
+                AsyncMessageLabel::CNodeRevoke | AsyncMessageLabel::CNodeRotate | AsyncMessageLabel::CNodeCancelBadgedSends | AsyncMessageLabel::CNodeDelete | AsyncMessageLabel::CNodeCopy | AsyncMessageLabel::CNodeMint => {
                     handle_async_cnode_syscall(&mut item, tcb, label);
+                }
+                AsyncMessageLabel::RISCVPageTableMap => {
+                    handle_async_page_table_map(&mut item, tcb);
+                }
+                AsyncMessageLabel::RISCVPageTableUnmap => {
+                    handle_async_page_table_unmap(&mut item, tcb);
+                }
+                AsyncMessageLabel::RISCVPageMap => {
+                    handle_async_page_map(&mut item, tcb);
+                }
+                AsyncMessageLabel::RISCVPageUnmap => {
+                    handle_async_page_unmap(&mut item, tcb);
                 }
                 _ => {
                     handle_async_unknown_label(&mut item, tcb);
@@ -122,7 +136,6 @@ fn handle_async_untyped_retype(item: &mut IPCItem, tcb: &mut tcb_t) {
     let new_type = op_new_type.unwrap();
     let obj_size = new_type.get_object_size(user_obj_size);
     // TODO: Translate
-    // debug!("decode_untyed_invocation: {:?} {} {} {} {} {} {}", new_type, user_obj_size, node_index, node_depth, node_offset, node_window, obj_size);
     if user_obj_size >= wordBits || obj_size > seL4_MaxUntypedBits {
         debug!("handle_async_untyped_retype: Untyped Retype: Invalid object size. {} : {}", user_obj_size, obj_size);
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
@@ -134,7 +147,7 @@ fn handle_async_untyped_retype(item: &mut IPCItem, tcb: &mut tcb_t) {
         return;
     }
     let mut node_cap = cap_t::default();
-    let status = get_target_cnode(node_index, node_depth, &mut node_cap);
+    let status = get_target_cnode(root_cptr, tcb, node_index, node_depth, &mut node_cap);
     if status != exception_t::EXCEPTION_NONE {
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
         return;
@@ -171,14 +184,46 @@ fn handle_async_untyped_retype(item: &mut IPCItem, tcb: &mut tcb_t) {
     }
     let aligned_free_ref = alignUp(free_ref, obj_size);
 
+    debug!("handle_async_untyped_retype: invoke_untyped_retype");
+    
     let status = invoke_untyped_retype(service_slot, reset, aligned_free_ref, new_type, user_obj_size,
         convert_to_mut_type_ref::<cte_t>(node_cap.get_cnode_ptr()),
         node_offset, node_window, device_mem as usize);
-    if status == exception_t::EXCEPTION_NONE{
+    if status == exception_t::EXCEPTION_NONE {
         item.extend_msg[0] = AsyncErrorLabel::NoError.into();
     } else {
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
     }
+}
+
+fn get_target_cnode(root_cptr: usize, tcb: &mut tcb_t, node_index: usize, node_depth: usize, node_cap: &mut cap_t) -> exception_t {
+    // 解码cptr
+    // 根据service的CPtr获取slot
+    let root_lu_ret = tcb.lookup_slot(root_cptr);
+    if unlikely(root_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("get_target_cnode: Invocation of invalid root cap {:#x}.", root_cptr);
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    let root_slot: &mut cte_t = unsafe {&mut *root_lu_ret.slot };
+    // 和原函数一致
+    let target_node_cap = if node_depth == 0 {
+        root_slot.cap
+    } else {
+        let root_cap = root_slot.cap;
+        let lu_ret = lookup_slot_for_cnode_op(false, &root_cap, node_index, node_depth);
+        if lu_ret.status != exception_t::EXCEPTION_NONE {
+            debug!("get_target_cnode: Untyped Retype: Invalid destination address.");
+            return lu_ret.status;
+        }
+        unsafe { (*lu_ret.slot).cap }
+    };
+
+    if target_node_cap.get_cap_type() != CapTag::CapCNodeCap {
+        debug!("get_target_cnode: Untyped Retype: Destination cap invalid or read-only.");
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    *node_cap = target_node_cap;
+    exception_t::EXCEPTION_NONE
 }
 
 fn handle_async_page_get_address(item: &mut IPCItem, tcb: &mut tcb_t) {
@@ -327,6 +372,8 @@ fn handle_async_cnode_syscall(item: &mut IPCItem, tcb: &mut tcb_t, label: AsyncM
     let error = match label {
         AsyncMessageLabel::CNodeCopy | AsyncMessageLabel::CNodeMint => handle_async_cnode_syscall_with_two_slot(item, tcb, dest_slot, label),
         AsyncMessageLabel::CNodeDelete => handle_async_cnode_delete(dest_slot),
+        AsyncMessageLabel::CNodeCancelBadgedSends => invoke_cnode_cancel_badged_sends(dest_slot),
+        AsyncMessageLabel::CNodeRevoke => invoke_cnode_revoke(dest_slot),
         _ => exception_t::EXCEPTION_SYSCALL_ERROR
     };
     if error == exception_t::EXCEPTION_NONE {
@@ -391,4 +438,237 @@ fn handle_async_cnode_syscall_with_two_slot(item: &mut IPCItem, tcb: &mut tcb_t,
 
 fn handle_async_cnode_delete(dest_slot: &mut cte_t) -> exception_t{
     dest_slot.delete_all(true)
+}
+
+fn handle_async_page_table_map(item: &mut IPCItem, tcb: &mut tcb_t) {
+    // service
+    let service_cptr = item.extend_msg[0] as usize;
+    // 根据service的CPtr获取slot
+    let service_lu_ret = tcb.lookup_slot(service_cptr);
+    if unlikely(service_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_table_map: Invocation of invalid service cap {:#x}.", service_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let service_slot: &mut cte_t = unsafe {&mut *service_lu_ret.slot };
+    let service_cap = &mut service_slot.cap;
+    // lvl1pt
+    let lvl1pt_cptr = item.extend_msg[1] as usize;
+    // 根据lvl1pt的CPtr获取slot
+    let lvl1pt_lu_ret = tcb.lookup_slot(lvl1pt_cptr);
+    if unlikely(lvl1pt_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_table_map: Invocation of invalid lvl1pt cap {:#x}.", lvl1pt_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let lvl1pt_slot: &mut cte_t = unsafe {&mut *lvl1pt_lu_ret.slot };
+    let lvl1pt_cap = &lvl1pt_slot.cap;
+
+    if unlikely(service_cap.get_pt_is_mapped() != 0) {
+        debug!("handle_async_page_table_map: RISCVPageTable: PageTable is already mapped.");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+
+    let vaddr: usize = (item.extend_msg[2] as usize) << 12;
+    if unlikely(vaddr >= USER_TOP) {
+        debug!("handle_async_page_table_map: RISCVPageTableMap: Virtual address cannot be in kernel window.");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+
+    if let Some((lvl1pt, asid)) = get_vspace(lvl1pt_cap) {
+        let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
+        let lu_slot = convert_to_mut_type_ref::<pte_t>(lu_ret.ptSlot as usize);
+        // debug!("lu_ret.ptBitsLeft: {}", lu_ret.ptBitsLeft);
+        if lu_ret.ptBitsLeft == seL4_PageBits || lu_slot.get_vaild() != 0 {
+            debug!("handle_async_page_table_map: RISCVPageTableMap: All objects mapped at this address");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        }
+        let error = invoke_page_table_map(service_cap, lu_slot, asid, vaddr & !MASK!(lu_ret.ptBitsLeft));
+        if error != exception_t::EXCEPTION_NONE {
+            debug!("handle_async_page_table_map: invoke error");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        } else {
+            item.extend_msg[0] = AsyncErrorLabel::NoError.into();
+            return;
+        }
+    } else {
+        debug!("handle_async_page_table_map: RISCVPageTableMap: cannot get vspace.");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }   
+}
+
+fn handle_async_page_table_unmap(item: &mut IPCItem, tcb: &mut tcb_t) {
+    // service
+    let service_cptr = item.extend_msg[0] as usize;
+    // 根据service的CPtr获取slot
+    let service_lu_ret = tcb.lookup_slot(service_cptr);
+    if unlikely(service_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_table_unmap: Invocation of invalid service cap {:#x}.", service_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let service_slot: &mut cte_t = unsafe {&mut *service_lu_ret.slot };
+    // translate
+    if !service_slot.is_final_cap() {
+        debug!("handle_async_page_table_unmap: RISCVPageTableUnmap: cannot unmap if more than once cap exists");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let cap = &mut service_slot.cap;
+    if cap.get_pt_is_mapped() != 0 {
+        let asid = cap.get_pt_mapped_asid();
+        let find_ret = find_vspace_for_asid(asid);
+        let pte_ptr = cap.get_pt_base_ptr() as *mut pte_t;
+        if find_ret.status == exception_t::EXCEPTION_NONE && find_ret.vspace_root.unwrap() == pte_ptr {
+            debug!("RISCVPageTableUnmap: cannot call unmap on top level PageTable");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        }
+    }
+    
+    let error = invoke_page_table_unmap(cap);
+    if error != exception_t::EXCEPTION_NONE {
+        debug!("handle_async_page_table_unmap: invoke error");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+    } else {
+        item.extend_msg[0] = AsyncErrorLabel::NoError.into();
+    }
+    return;
+}
+
+fn handle_async_page_map(item: &mut IPCItem, tcb: &mut tcb_t) {
+    // service
+    let frame_cptr = item.extend_msg[0] as usize;
+    // 根据service的CPtr获取slot
+    let frame_lu_ret = tcb.lookup_slot(frame_cptr);
+    if unlikely(frame_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_table_map: Invocation of invalid frame cap {:#x}.", frame_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let frame_slot: &mut cte_t = unsafe {&mut *frame_lu_ret.slot };
+    // lvl1pt
+    let lvl1pt_cptr = item.extend_msg[1] as usize;
+    // 根据service的CPtr获取slot
+    let lvl1pt_lu_ret = tcb.lookup_slot(lvl1pt_cptr);
+    if unlikely(lvl1pt_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_map: Invocation of invalid lvl1pt cap {:#x}.", lvl1pt_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let lvl1pt_slot: &mut cte_t = unsafe {&mut *lvl1pt_lu_ret.slot };
+    let lvl1pt_cap = lvl1pt_slot.cap;
+    // 其他
+    let vaddr: usize = (item.extend_msg[2] as usize) << 12;
+    // debug!("handle_async_page_map: vaddr: {:#x}", vaddr);
+    let w_rights_mask = item.extend_msg[3] as usize;
+    let attr = vm_attributes_t::from_word(item.extend_msg[4] as usize);
+    if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
+        let frame_size = frame_slot.cap.get_frame_size();
+        let vtop = vaddr + BIT!(pageBitsForSize(frame_size)) - 1;
+        if unlikely(vtop >= USER_TOP) {
+            debug!("handle_async_page_map: vtop is greater than user top");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        }
+
+        if unlikely(!checkVPAlignment(frame_size, vaddr)) {
+            debug!("handle_async_page_map: frame no align");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        }
+
+        let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
+        if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
+            debug!("handle_async_page_map: ptBitLeft != pageBitsForSize");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+            return;
+        }
+
+        let pt_slot = convert_to_mut_type_ref::<pte_t>(lu_ret.ptSlot as usize);
+        let frame_asid = frame_slot.cap.get_frame_mapped_asid();
+        if frame_asid != asidInvalid {
+            if frame_asid != asid {
+                debug!("handle_async_page_map: RISCVPageMap: Attempting to remap a frame that does not belong to the passed address space");
+                item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+                return;
+            }
+
+            if frame_slot.cap.get_frame_mapped_address() != vaddr {
+                debug!("handle_async_page_map: RISCVPageMap: attempting to map frame into multiple addresses");
+                item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+                return;
+            }
+
+            if pt_slot.is_pte_table() {
+                debug!("handle_async_page_map: RISCVPageMap: no mapping to remap.");
+                item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+                return;
+            }
+        } else {
+            if pt_slot.get_vaild() != 0 {
+                debug!("handle_async_page_map: Virtual address already mapped");
+                item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+                return;
+            }
+        }
+        let error = invoke_page_map(&mut frame_slot.cap.clone(), w_rights_mask, vaddr, asid, attr, pt_slot, frame_slot);
+        if error != exception_t::EXCEPTION_NONE {
+            debug!("handle_async_page_map: invoke error");
+            item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        } else {
+            item.extend_msg[0] = AsyncErrorLabel::NoError.into();
+        }
+    } else {
+        debug!("handle_async_page_map: cannot get vspace");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+    }
+}
+
+fn handle_async_page_unmap(item: &mut IPCItem, tcb: &mut tcb_t) {
+    // service
+    let service_cptr = item.extend_msg[0] as usize;
+    // 根据service的CPtr获取slot
+    let service_lu_ret = tcb.lookup_slot(service_cptr);
+    if unlikely(service_lu_ret.status != exception_t::EXCEPTION_NONE) {
+        debug!("handle_async_page_table_map: Invocation of invalid service cap {:#x}.", service_cptr);
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+        return;
+    }
+    let service_slot: &mut cte_t = unsafe {&mut *service_lu_ret.slot };
+    // translate
+    let error = invoke_page_unmap(service_slot);
+    if error != exception_t::EXCEPTION_NONE {
+        debug!("handle_async_page_unmap: invoke error");
+        item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
+    } else {
+        item.extend_msg[0] = AsyncErrorLabel::NoError.into();
+    }
+}
+
+
+fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(&mut pte_t, usize)> {
+    if lvl1pt_cap.get_cap_type() != CapTag::CapPageTableCap || lvl1pt_cap.get_pt_is_mapped() == asidInvalid {
+        debug!("get_vspace: RISCVMMUInvocation: Invalid top-level PageTable.");
+        return None;
+    }
+
+    let lvl1pt = convert_to_mut_type_ref::<pte_t>(lvl1pt_cap.get_pt_base_ptr());
+    let asid = lvl1pt_cap.get_pt_mapped_asid();
+
+    let find_ret = find_vspace_for_asid(asid);
+    if find_ret.status != exception_t::EXCEPTION_NONE {
+        debug!("get_vspace: RISCVMMUInvocation: ASID lookup failed");
+        return None;
+    }
+    if find_ret.vspace_root.unwrap() as usize != lvl1pt.get_ptr() {
+        debug!("get_vspace: RISCVMMUInvocation: ASID lookup failed");
+        return None;
+    }
+    Some((lvl1pt, asid))
 }

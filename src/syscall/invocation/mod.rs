@@ -2,7 +2,7 @@ pub mod decode;
 mod invoke_tcb;
 pub mod invoke_cnode;
 pub mod invoke_untyped;
-mod invoke_mmu_op;
+pub mod invoke_mmu_op;
 pub mod invoke_irq;
 
 use core::intrinsics::unlikely;
