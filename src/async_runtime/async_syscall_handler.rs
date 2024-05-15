@@ -36,12 +36,12 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
         return;
     }
     let new_buffer = convert_to_mut_type_ref::<NewBuffer>(new_buffer_cap.get_frame_base_ptr());
-    debug!("async_syscall_handler: new_buffer_cap: {}, new_buffer_ptr: {:#x}", new_buffer_cap.get_cap_ptr(), new_buffer_cap.get_frame_base_ptr());
+    // debug!("async_syscall_handler: new_buffer_cap: {}, new_buffer_ptr: {:#x}", new_buffer_cap.get_cap_ptr(), new_buffer_cap.get_frame_base_ptr());
     let badge = ntfn_cap.get_nf_badge();
     loop {
         if let Some(mut item) = new_buffer.req_items.get_first_item() {
             let label: AsyncMessageLabel = AsyncMessageLabel::from(item.msg_info);
-            debug!("async_syscall_handler: handle async syscall: {:?}", label);
+            // debug!("async_syscall_handler: handle async syscall: {:?}", label);
             match label {
                 AsyncMessageLabel::UntypedRetype => {
                     handle_async_untyped_retype(&mut item, tcb);
@@ -84,12 +84,13 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
             if new_buffer.recv_reply_status.load(SeqCst) == false {
                 new_buffer.recv_reply_status.store(true, SeqCst);
                 // todo: send uintr
-                debug!("async_syscall_handler: send uintr sender_id: {}", sender_id);
+                // debug!("async_syscall_handler: send uintr sender_id: {}", sender_id);
                 unsafe {
                     send_async_syscall_uintr(sender_id);
                 }
             }
         } else {
+            // debug!("handler: else");
             new_buffer.recv_req_status.store(false, SeqCst);
             yield_now().await;
             // debug!("wake recv co");
@@ -185,7 +186,7 @@ fn handle_async_untyped_retype(item: &mut IPCItem, tcb: &mut tcb_t) {
     }
     let aligned_free_ref = alignUp(free_ref, obj_size);
 
-    debug!("handle_async_untyped_retype: invoke_untyped_retype");
+    // debug!("handle_async_untyped_retype: invoke_untyped_retype");
     
     let status = invoke_untyped_retype(service_slot, reset, aligned_free_ref, new_type, user_obj_size,
         convert_to_mut_type_ref::<cte_t>(node_cap.get_cnode_ptr()),
@@ -255,7 +256,7 @@ fn handle_async_putstring(item: &mut IPCItem, tcb: &mut tcb_t) {
     for i in 0..size {
         console_putchar(item.extend_msg[1 + i] as usize);
     }
-    console_putchar('\n' as usize);
+    // console_putchar('\n' as usize);
     item.extend_msg[0] = AsyncErrorLabel::NoError.into();
 }
 
@@ -304,8 +305,14 @@ fn handle_async_tcb_bind_notification(item: &mut IPCItem, tcb: &mut tcb_t) {
         item.extend_msg[0] = AsyncErrorLabel::SyscallError.into();
         return;
     }
+    debug!("handle_async_unbind_notification: Before Bind");
+    debug!("handle_async_bind_notification: TCB: tcbBindNotification: {:#x}", target_tcb.tcbBoundNotification);
+    debug!("handle_async_bind_notification: TCB: get_ptr: {:#x}", target_tcb.get_ptr());
+    debug!("handle_async_bind_notification: Notification: bound_tcb: {:#x}", ntfn.get_bound_tcb());
+    debug!("handle_async_bind_notification: Notification: get_ptr: {:#x}", ntfn.get_ptr());    
     ntfn.bind_tcb(target_tcb);
     target_tcb.bind_notification(ntfn.get_ptr());
+    debug!("handle_async_unbind_notification: After Bind");
     debug!("handle_async_bind_notification: TCB: tcbBindNotification: {:#x}", target_tcb.tcbBoundNotification);
     debug!("handle_async_bind_notification: TCB: get_ptr: {:#x}", target_tcb.get_ptr());
     debug!("handle_async_bind_notification: Notification: bound_tcb: {:#x}", ntfn.get_bound_tcb());
