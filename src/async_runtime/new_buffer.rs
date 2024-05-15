@@ -97,6 +97,6 @@ impl NewBuffer {
 }
 
 pub struct NewBufferMap {
-    pub buf: &'static NewBuffer,
+    pub buf: &'static mut NewBuffer,
     pub cid: CoroutineId,
 }

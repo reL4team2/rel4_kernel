@@ -3,9 +3,9 @@ use crate::common::structures::exception_t;
 use crate::cspace::interface::CapTag;
 use log::debug;
 use riscv::register::scause;
-use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, NEW_BUFFER_MAP, NewBuffer};
+use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, IPCItem, NEW_BUFFER_MAP, NewBuffer};
 use crate::boot::cpu_idle;
-use crate::task_manager::{activateThread, schedule, timerTick};
+use crate::task_manager::{activateThread, schedule, tcb_t, timerTick};
 use crate::task_manager::ipc::notification_t;
 use crate::config::{irqInvalid, maxIRQ};
 use crate::interrupt::*;
@@ -15,6 +15,7 @@ use crate::uintr;
 use crate::uintr::uipi_send;
 use crate::vspace::kpptr_to_paddr;
 use core::sync::atomic::Ordering::SeqCst;
+use crate::common::utils::convert_to_option_mut_type_ref;
 
 
 #[no_mangle]
@@ -56,7 +57,6 @@ pub unsafe fn send_net_uintr() {
     let frame_addr = crate::uintc::UINTR_ST_POOL.as_ptr().offset((uist_idx * core::mem::size_of::<UIntrSTEntry>() * crate::uintc::config::UINTC_ENTRY_NUM) as isize) as usize;
     uintr::suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
     uipi_send(offset);
-    NET_INTR_CNT = 0;
 }
 
 #[no_mangle]
@@ -87,8 +87,30 @@ pub fn handleInterrupt(irq: usize) {
             let handler_cap = &handler_slot.cap;
             if handler_cap.get_cap_type() == CapTag::CapNotificationCap
                 && handler_cap.get_nf_can_send() != 0 {
-                // send_net_uintr();
-                convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
+                let ntfn = convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr());
+                if let Some(tcb) = convert_to_option_mut_type_ref::<tcb_t>(ntfn.get_bound_tcb()) {
+                    if let Some(cid) = tcb.asyncSysHandlerCid {
+                        for item in unsafe { &mut NEW_BUFFER_MAP } {
+                            if item.cid == cid {
+                                let new_buffer = &mut item.buf;
+                                let mut item = IPCItem::default();
+                                item.msg_info = 1;
+                                new_buffer.req_items.write_free_item(&item).unwrap();
+                                if new_buffer.recv_req_status.load(SeqCst) == false {
+                                    NET_INTR_CNT += 1;
+                                    new_buffer.recv_req_status.store(true, SeqCst);
+                                    send_net_uintr();
+                                    debug!("NET INTR CNT: {}", NET_INTR_CNT);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                // NET_INTR_CNT += 1;
+                send_net_uintr();
+                // debug!("NET_INTR_CNT: {}", NET_INTR_CNT);
+                // convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
 
             } else {
                 debug!("no ntfn signal");

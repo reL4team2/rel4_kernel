@@ -4,6 +4,7 @@ use core::future::Future;
 use core::pin::Pin;
 use log::debug;
 pub use crate::async_runtime::coroutine::CoroutineId;
+pub use new_buffer::IPCItem;
 use crate::async_runtime::executor::Executor;
 
 mod coroutine;
