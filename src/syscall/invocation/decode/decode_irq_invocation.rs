@@ -3,11 +3,8 @@ use crate::cspace::interface::{cte_t, CapTag};
 use log::debug;
 use crate::task_manager::{set_thread_state, get_currenct_thread, ThreadState};
 
-use crate::{
-    kernel::boot::{get_extra_cap_by_index, current_syscall_error},
-    syscall::{get_syscall_arg, lookupSlotForCNodeOp, invocation::invoke_irq::invoke_irq_control},
-    interrupt::is_irq_active, config::{maxIRQ, irqInvalid}
-};
+use crate::{kernel::boot::{get_extra_cap_by_index, current_syscall_error}, syscall::{get_syscall_arg, lookupSlotForCNodeOp, invocation::invoke_irq::invoke_irq_control}, interrupt::is_irq_active, config::{maxIRQ, irqInvalid}, println};
+use crate::interrupt::plic_complete_claim;
 use crate::syscall::invocation::invoke_irq::{invoke_clear_irq_handler, invoke_set_irq_handler};
 
 
@@ -53,6 +50,7 @@ pub fn decode_irq_control_invocation(label: MessageLabel, length: usize, src_slo
 pub fn decode_irq_handler_invocation(label: MessageLabel, irq: usize) -> exception_t {
     return match label {
         MessageLabel::IRQAckIRQ => {
+            plic_complete_claim(irq);
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             exception_t::EXCEPTION_NONE
         }

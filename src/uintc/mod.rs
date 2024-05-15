@@ -12,7 +12,7 @@ use crate::uintc::config::{UINTC_BASE, UINTC_ENTRY_NUM};
 use crate::uintc::operations::{uintc_read_high, uintc_read_low, uintc_write_high, uintc_write_low};
 use crate::uintr;
 use crate::cspace::interface::{cap_t, CapTag};
-use crate::uintr::sip;
+use crate::uintr::{sip, suicfg, suirs, suist, uipi_read, uipi_send, uipi_write};
 use crate::vspace::{kpptr_to_paddr, pptr_to_paddr};
 
 #[derive(Copy, Clone)]
@@ -143,12 +143,15 @@ impl UIntrReceiver {
     }
 }
 
+static ALLOCATE_ID_TO_RS_ID: [usize; 8] = [0, 5, 6, 7, 8, 9, 10, 11];
+
 pub fn register_receiver(ntfn: &mut notification_t, tcb: &mut tcb_t) {
     if tcb.tcbBoundNotification != ntfn.get_ptr() {
         debug!("fail to register uint receiver, need to bind ntfn first");
         return;
     }
-    if let Some(recv_index) = UINTR_RECV_ALLOCATOR.lock().allocate() {
+    if let Some(mut recv_index) = UINTR_RECV_ALLOCATOR.lock().allocate() {
+        recv_index = ALLOCATE_ID_TO_RS_ID[recv_index];
         debug!("recv index: {}", recv_index);
         ntfn.set_uintr_flag(1);
         ntfn.set_recv_idx(recv_index);
@@ -223,7 +226,8 @@ pub fn register_sender_async_syscall(ntfn_cap: &cap_t) -> isize {
 
 
 pub fn init() {
-    uintr::suicfg::write(pptr_to_paddr(UINTC_BASE));
+    debug!("UINTC_BASE: {:#x}", UINTC_BASE);
+    // uintr::suicfg::write(pptr_to_paddr(UINTC_BASE));
 }
 
 #[inline]
@@ -248,6 +252,9 @@ unsafe fn uirs_restore() {
         if ntfn.get_uintr_flag() == 1 {
             let index = ntfn.get_recv_idx();
             let mut uirs = UIntrReceiver::from(index);
+            if uirs.irq != 0 {
+                // debug!("set_usoft: {}, {}", uirs.irq, index);
+            }
             uirs.hartid = {
                 #[cfg(feature = "ENABLE_SMP")] {
                     crate::smp::cpu_index_to_id(cpu_id())
@@ -267,9 +274,11 @@ unsafe fn uirs_restore() {
             // supervisor configurations
             uintr::suirs::write((1 << 63) | (index & 0xffff));
             uintr::sideleg::set_usoft();
+            // debug!("irq: {:#x}", uirs.irq);
             if uirs.irq != 0 {
                 sip::set_usoft();
             } else {
+                // debug!("clear_usoft");
                 sip::clear_usoft();
             }
             return;
@@ -284,8 +293,55 @@ unsafe fn uist_init() {
     if let Some(uist_idx) = get_currenct_thread().uintr_inner.uist {
         let frame_addr = UINTR_ST_POOL.as_ptr().offset((uist_idx * core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM) as isize) as usize;
         // debug!("frame_addr: {:#x}", frame_addr);
-        uintr::suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
+        suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame_addr) >> 0xC));
     } else {
-        uintr::suist::write(0);
+        suist::write(0);
+    }
+}
+
+static LOCK: Mutex<()> = Mutex::new(());
+
+
+pub unsafe fn test_uintr(hartid: usize) {
+    let _lock = LOCK.lock();
+    debug!("test uintr start, hartid: {}", hartid);
+
+    // Enable receiver status.
+    let uirs_index = ALLOCATE_ID_TO_RS_ID[hartid];
+    // Receiver on hart hartid
+    *((UINTC_BASE + uirs_index * 0x20 + 8) as *mut u64) = ((hartid << 16) as u64) | 3;
+
+    suirs::write((1 << 63) | uirs_index);
+    assert_eq!(suirs::read().bits(), (1 << 63) | uirs_index);
+    // Write to high bits
+    uipi_write(0x00010000);
+    assert_eq!(uipi_read(), 0x00010000);
+
+    // Enable sender status.
+    let uist_idx = 0;
+    let frame = UINTR_ST_POOL.as_ptr().offset((uist_idx * core::mem::size_of::<UIntrSTEntry>() * UINTC_ENTRY_NUM) as isize) as usize;
+    suist::write((1 << 63) | (1 << 44) | (kpptr_to_paddr(frame) >> 0xC));
+
+    let offset = 0;
+    let entry = unsafe {
+        // debug!("UINTR_ST_POOL.as_ptr(): {:#x}", UINTR_ST_POOL.as_ptr() as usize);
+        convert_to_mut_type_ref::<UIntrSTEntry>(UINTR_ST_POOL.as_ptr().offset(((uist_idx * UINTC_ENTRY_NUM + offset) * core::mem::size_of::<UIntrSTEntry>()) as isize) as usize)
+    };
+    // debug!("entry.as_ptr(): {:#x}", entry as *const UIntrSTEntry as usize);
+    entry.set_valid(true);
+    entry.set_vec(hartid);
+    // debug!("[register sender] recv_idx: {}", convert_to_type_ref::<notification_t>(ntfn_cap.get_nf_ptr()).get_recv_idx());
+    entry.set_index(uirs_index);
+
+    log::info!("Send UIPI!");
+    uipi_send(0);
+
+    loop {
+        if sip::read().usoft() {
+            debug!("Receive UINT!");
+            sip::clear_usoft();
+            assert_eq!(uipi_read(), 1 << hartid);
+            break;
+        }
     }
 }

@@ -1,16 +1,19 @@
 pub mod handler;
 mod plic;
+mod net;
+
 use core::arch::asm;
 use core::ops::Deref;
 use log::debug;
 
+pub use net::{eth_recv, net_init};
 
 use crate::common::sel4_config::CONFIG_MAX_NUM_NODES;
 use crate::common::utils::{convert_to_mut_type_ref, cpu_id};
 use crate::BIT;
 use crate::cspace::interface::cte_t;
 use crate::vspace::pptr_t;
-
+pub use plic::plic_complete_claim;
 use crate::{config::*, riscv::read_sip};
 
 #[cfg(feature = "ENABLE_SMP")]

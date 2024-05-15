@@ -22,7 +22,7 @@ use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 use crate::boot::utils::paddr_to_pptr_reg;
-use crate::interrupt::{init_hart, init_irq_controller, set_sie_mask};
+use crate::interrupt::{init_hart, init_irq_controller, net_init, set_sie_mask};
 use crate::common::sbi::{set_timer, get_time};
 use crate::structures::{ndks_boot_t, region_t, p_region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion, v_region_t};
 use crate::config::*;
@@ -40,6 +40,8 @@ use crate::{
 
 #[cfg(feature = "ENABLE_SMP")]
 use core::arch::asm;
+use crate::smp::cpu_index_to_id;
+use crate::uintc::test_uintr;
 
 pub static ksNumCPUs: Mutex<usize> = Mutex::new(0);
 pub static node_boot_lock: Mutex<usize> = Mutex::new(0);
@@ -75,6 +77,10 @@ fn init_cpu() {
 
     #[cfg(feature = "ENABLE_UINTC")]
     crate::uintc::init();
+
+    // unsafe {
+    //     test_uintr(cpu_index_to_id(cpu_id()));
+    // }
 }
 
 fn calculate_extra_bi_size_bits(size: usize) -> usize {
@@ -215,10 +221,12 @@ pub fn try_init_kernel(
     let ipcbuf_vptr = ui_v_reg.end;
     let bi_frame_vptr = ipcbuf_vptr + BIT!(PAGE_BITS);
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
+    debug!("start map kernel window");
     rust_map_kernel_window();
     init_cpu();
     init_irq_controller();
     init_hart();
+    // net_init();
 
     let dtb_p_reg = init_dtb(dtb_size, dtb_phys_addr, &mut extra_bi_size);
     if dtb_p_reg.is_none() {
@@ -277,15 +285,16 @@ pub fn try_init_kernel(
     } else {
         return false;
     }
-    
+
     true
 }
 
 #[cfg(feature = "ENABLE_SMP")]
 pub fn try_init_kernel_secondary_core(_hart_id: usize, _core_id: usize) -> bool {
     use core::ops::AddAssign;
+    debug!("start try_init_kernel_secondary_core0");
     while node_boot_lock.lock().eq(&0) {}
-    // debug!("start try_init_kernel_secondary_core");
+    debug!("start try_init_kernel_secondary_core1");
     init_cpu();
     init_hart();
     debug!("init cpu compl");

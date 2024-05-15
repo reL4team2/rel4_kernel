@@ -13,7 +13,7 @@ use crate::structures::{region_t, rootserver_mem_t, v_region_t, seL4_SlotRegion,
     seL4_BootInfo};
 
 use crate::config::*;
-use crate::utils::clear_memory;
+use crate::utils::{clear_memory, clear_memory2};
 
 use crate::task_manager::*;
 use crate::vspace::*;
@@ -43,7 +43,7 @@ pub fn root_server_init(it_v_reg: v_region_t, extra_bi_size_bits: usize, ipcbuf_
     unsafe {
         root_server_mem_init(it_v_reg, extra_bi_size_bits);
     }
-    
+
     let root_cnode_cap = unsafe {
         create_root_cnode()
     };
@@ -54,9 +54,11 @@ pub fn root_server_init(it_v_reg: v_region_t, extra_bi_size_bits: usize, ipcbuf_
 
     create_domain_cap(&root_cnode_cap);
     init_irqs(&root_cnode_cap);
+    debug!("root_server_init 0");
     unsafe {
         rust_populate_bi_frame(0, CONFIG_MAX_NUM_NODES, ipcbuf_vptr, extra_bi_size);
     }
+    debug!("root_server_init 1");
     let it_pd_cap = unsafe {
         rust_create_it_address_space(&root_cnode_cap, it_v_reg)
     };
@@ -64,10 +66,12 @@ pub fn root_server_init(it_v_reg: v_region_t, extra_bi_size_bits: usize, ipcbuf_
         debug!("ERROR: address space creation for initial thread failed");
         return None;
     }
+    debug!("root_server_init 2");
 
     if !init_bi_frame_cap(root_cnode_cap, it_pd_cap, bi_frame_vptr, extra_bi_size, extra_bi_frame_vptr) {
         return None;
     }
+    debug!("root_server_init 3");
     let ipcbuf_cap = unsafe {
         create_ipcbuf_frame_cap(&root_cnode_cap, &it_pd_cap, ipcbuf_vptr)
     };
@@ -75,19 +79,20 @@ pub fn root_server_init(it_v_reg: v_region_t, extra_bi_size_bits: usize, ipcbuf_
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
-
+    debug!("root_server_init 4");
     if ipcbuf_cap.get_cap_type() == CapTag::CapNullCap {
         debug!("ERROR: could not create IPC buffer for initial thread");
         return None;
     }
+    debug!("root_server_init 5");
     if !create_frame_ui_frames(root_cnode_cap, it_pd_cap, ui_reg, pv_offset) {
         return None;
     }
-
+    debug!("root_server_init 6");
     if !asid_init(root_cnode_cap, it_pd_cap) {
         return None;
     }
-    
+    debug!("root_server_init 7");
     let initial = unsafe {
         create_initial_thread(
             &root_cnode_cap,
@@ -98,7 +103,7 @@ pub fn root_server_init(it_v_reg: v_region_t, extra_bi_size_bits: usize, ipcbuf_
             ipcbuf_cap,
         )
     };
-
+    debug!("root_server_init 8");
     if initial as usize == 0 {
         debug!("ERROR: could not create initial thread");
         return None;
@@ -117,6 +122,7 @@ unsafe fn create_initial_thread(
     ipcbuf_cap: cap_t,
 ) -> *mut tcb_t {
     let tcb = convert_to_mut_type_ref::<tcb_t>(rootserver.tcb + TCB_OFFSET);
+    debug!("create_initial_thread, tcb: {:#x}", tcb.get_ptr());
     tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
     tcb.tcbArch = arch_tcb_t::default();
 
@@ -127,13 +133,13 @@ unsafe fn create_initial_thread(
         debug!("Failed to derive copy of IPC Buffer\n");
         return 0 as *mut tcb_t;
     }
-
+    debug!("create_initial_thread 0");
     cte_insert(root_cnode_cap, cnode.get_offset_slot(seL4_CapInitThreadCNode), tcb.get_cspace_mut_ref(tcbCTable));
-
+    debug!("create_initial_thread 1");
     cte_insert(it_pd_cap, cnode.get_offset_slot(seL4_CapInitThreadVspace), tcb.get_cspace_mut_ref(tcbVTable));
-
+    debug!("create_initial_thread 2");
     cte_insert(&dc_ret.cap, cnode.get_offset_slot(seL4_CapInitThreadIPCBuffer), tcb.get_cspace_mut_ref(tcbBuffer));
-
+    debug!("create_initial_thread 3");
     tcb.tcbIPCBuffer = ipcbuf_vptr;
     tcb.set_register(capRegister, bi_frame_vptr);
     tcb.set_register(NextIP, ui_v_entry);
@@ -220,7 +226,6 @@ unsafe fn root_server_mem_init(it_v_reg: v_region_t, extra_bi_size_bits: usize) 
         let empty_index = i + 1;
         let unaligned_start = ndks_boot.freemem[i].end - size;
         let start = ROUND_DOWN!(unaligned_start, max);
-
         /* if unaligned_start didn't underflow, and start fits in the region,
             * then we've found a region that fits the root server objects. */
         if unaligned_start <= ndks_boot.freemem[i].end && start >= ndks_boot.freemem[i].start {
@@ -241,6 +246,7 @@ unsafe fn root_server_mem_init(it_v_reg: v_region_t, extra_bi_size_bits: usize) 
 }
 
 unsafe fn create_root_cnode() -> cap_t {
+    debug!("create_root_cnode 0");
     let cap = cap_t::new_cnode_cap(
         CONFIG_ROOT_CNODE_SIZE_BITS,
         wordBits - CONFIG_ROOT_CNODE_SIZE_BITS,
@@ -248,6 +254,7 @@ unsafe fn create_root_cnode() -> cap_t {
         rootserver.cnode,
     );
     let ptr = rootserver.cnode as *mut cte_t;
+    debug!("create_root_cnode 1: {:#x}", ptr as usize);
     write_slot(ptr.add(seL4_CapInitThreadCNode), cap.clone());
     cap
 }
@@ -312,6 +319,8 @@ unsafe fn create_rootserver_objects(start: usize, it_v_reg: v_region_t, extra_bi
     let size = calculate_rootserver_size(it_v_reg, extra_bi_size_bits);
     rootserver_mem.start = start;
     rootserver_mem.end = start + size;
+    debug!("root server size: {}", size);
+    clear_memory2(start as *mut u8, size);
     maybe_alloc_extra_bi(max, extra_bi_size_bits);
 
     rootserver.cnode = alloc_rootserver_obj(cnode_size_bits, 1);

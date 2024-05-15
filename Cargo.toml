@@ -19,6 +19,8 @@ spin = { version = "0.9", features = ["use_ticket_mutex"] }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 rv-plic = { git = "https://github.com/duskmoon314/rv-plic" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "a35c6e6" }
+axi-ethernet = { git = "https://github.com/zflcs/axi-ethernet.git" }
+axi-dma = { git = "https://github.com/rel4team/axi-dma.git" }
 [features]
 ENABLE_SMP = []
 ENABLE_UINTC = []
