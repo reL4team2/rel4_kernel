@@ -22,6 +22,7 @@ virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "a3
 axi-ethernet = { git = "https://github.com/zflcs/axi-ethernet.git" }
 axi-dma = { git = "https://github.com/rel4team/axi-dma.git" }
 [features]
+default = ["ENABLE_SMP", "ENABLE_UINTC"]
 ENABLE_SMP = []
 ENABLE_UINTC = []
 board_qemu = []

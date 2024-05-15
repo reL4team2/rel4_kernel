@@ -214,7 +214,7 @@ fn handle_yield() {
 }
 
 fn wake_syscall_handler() {
-    debug!("wake_syscall_handler: enter");
+    // debug!("wake_syscall_handler: enter");
     if let Some(cid) = get_currenct_thread().asyncSysHandlerCid {
         debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
         coroutine_wake(&cid);
