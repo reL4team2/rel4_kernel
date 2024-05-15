@@ -77,7 +77,7 @@ pub fn handleInterrupt(irq: usize) {
     match get_irq_state(irq) {
         IRQState::IRQInactive => {
             debug!("IRQInactive");
-            // mask_interrupt(true, irq);
+            mask_interrupt(true, irq);
             debug!("Received disabled IRQ: {}\n", irq);
         }
         IRQState::IRQSignal => unsafe {

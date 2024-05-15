@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use core::future::Future;
 use core::pin::Pin;
 use log::debug;
-use crate::async_runtime::coroutine::CoroutineId;
+pub use crate::async_runtime::coroutine::CoroutineId;
 use crate::async_runtime::executor::Executor;
 
 mod coroutine;

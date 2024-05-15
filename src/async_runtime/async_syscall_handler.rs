@@ -92,6 +92,7 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
         } else {
             new_buffer.recv_req_status.store(false, SeqCst);
             yield_now().await;
+            // debug!("wake recv co");
         }
     }
 }

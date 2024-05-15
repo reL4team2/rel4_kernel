@@ -1,4 +1,5 @@
 use core::intrinsics::{likely, unlikely};
+use crate::async_runtime::CoroutineId;
 
 use crate::MASK;
 use crate::common::fault::*;
@@ -58,7 +59,7 @@ pub struct tcb_t {
     pub tcbEPPrev: usize,
     #[cfg(feature = "ENABLE_UINTC")]
     pub uintr_inner: uintr_tcb_inner,
-    pub asyncSysHandlerCid: Option<u32>
+    pub asyncSysHandlerCid: Option<CoroutineId>
 }
 
 #[cfg(feature = "ENABLE_UINTC")]
