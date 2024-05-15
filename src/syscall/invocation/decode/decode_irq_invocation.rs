@@ -50,7 +50,6 @@ pub fn decode_irq_control_invocation(label: MessageLabel, length: usize, src_slo
 pub fn decode_irq_handler_invocation(label: MessageLabel, irq: usize) -> exception_t {
     return match label {
         MessageLabel::IRQAckIRQ => {
-            debug!("[IRQAckIRQ] irq: {}", irq);
             plic_complete_claim(irq);
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             exception_t::EXCEPTION_NONE

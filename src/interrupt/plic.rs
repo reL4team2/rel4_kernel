@@ -179,7 +179,7 @@ pub fn plic_complete_claim(irq: usize) {
     let hart_id = cpu_index_to_id(CPU_IDX);
     let context = get_context(hart_id, 'S');
     if irq == PLIC_NET as usize {
-        debug!("plic complete: {}", irq);
+        // debug!("plic complete: {}", irq);
         RVPlic::complete(context, 3);
     }
 }

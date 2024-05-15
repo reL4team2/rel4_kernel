@@ -80,7 +80,7 @@ pub fn handleInterrupt(irq: usize) {
             debug!("Received disabled IRQ: {}\n", irq);
         }
         IRQState::IRQSignal => unsafe {
-            debug!("IRQSignal");
+            // debug!("IRQSignal");
             // eth_recv();
             let handler_slot = get_irq_handler_slot(irq);
             let handler_cap = &handler_slot.cap;
