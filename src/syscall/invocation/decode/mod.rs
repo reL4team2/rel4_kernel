@@ -95,7 +95,7 @@ pub fn decode_invocation(label: MessageLabel, length: usize, slot: &mut cte_t, c
                     debug!("UintrRegisterAsyncSyscall: sender id = {:?}", sender_id);
                     //生成异步系统调用处理协程并将cid保存至tcb
                     let cid = coroutine_spawn(Box::pin(async_syscall_handler(*cap, new_buffer_cap, get_currenct_thread(), sender_id as usize)));
-                    get_currenct_thread().asyncSysHandlerCid = Some(cid.0);
+                    get_currenct_thread().asyncSysHandlerCid = Some(cid);
                     debug!("UintrRegisterAsyncSyscall: coroutine id = {:?}", cid);
                     unsafe {
                         NEW_BUFFER_MAP.push(NewBufferMap {

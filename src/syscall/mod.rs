@@ -217,15 +217,6 @@ fn wake_syscall_handler() {
     debug!("wake_syscall_handler: enter");
     if let Some(cid) = get_currenct_thread().asyncSysHandlerCid {
         debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
-        for item in unsafe { &NEW_BUFFER_MAP } {
-            if item.cid.0 == cid{
-                let new_buffer = item.buf;
-                if new_buffer.recv_req_status.load(SeqCst) {
-                    debug!("wake_syscall_handler: wake cid: {}", item.cid.0);
-                    coroutine_wake(&item.cid);
-                }
-                break;
-            }
-        }
+        coroutine_wake(&cid);
     }
 }

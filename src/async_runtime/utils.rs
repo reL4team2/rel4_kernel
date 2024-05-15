@@ -1,6 +1,7 @@
 use alloc::boxed::Box;
 use core::future::Future;
 use core::pin::Pin;
+use core::sync::atomic::AtomicUsize;
 use core::task::{Context, Poll};
 use crate::async_runtime::{coroutine_get_current, coroutine_get_immediate_value};
 
@@ -124,6 +125,52 @@ impl<T, const SIZE: usize> RingBuffer<T, SIZE> where T: Default + Copy + Clone {
             Some(ans)
         } else {
             None
+        }
+    }
+}
+
+
+pub struct SafeRingBuffer<T, const SIZE: usize> {
+    data: [T; SIZE],
+    pub start: usize,
+    pub end: usize,
+    pub count: AtomicUsize,
+}
+
+impl<T, const SIZE: usize> SafeRingBuffer<T, SIZE> where T: Default + Copy + Clone {
+    pub fn new() -> Self {
+        Self {
+            data: [T::default(); SIZE],
+            start: 0,
+            end: 0,
+            count: AtomicUsize::new(0)
+        }
+    }
+
+    #[inline]
+    pub fn pop_safe(&mut self) -> Option<T> {
+        if !(self.count.load(core::sync::atomic::Ordering::Relaxed) == 0) {
+            let item = self.data[self.start];
+            self.start = (self.start + 1) % SIZE;
+            self.count.fetch_sub(1, core::sync::atomic::Ordering::Relaxed);
+            Some(item)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn push_safe(&mut self, item: &T) -> Result<(), ()> {
+        let _cnt = self.count.load(core::sync::atomic::Ordering::Relaxed);
+        // debug_println!("push cnt: {}, SIZE: {}", cnt, SIZE);
+        if !(self.count.load(core::sync::atomic::Ordering::SeqCst) == SIZE) {
+            // debug_println!("push cnt: {}, SIZE: {}", cnt, SIZE);
+            self.data[self.end] = *item;
+            self.end = (self.end + 1) % SIZE;
+            self.count.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+            Ok(())
+        } else {
+            Err(())
         }
     }
 }
