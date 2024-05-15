@@ -15,6 +15,7 @@ pub const SysRecv: isize = -5;
 pub const SysReply: isize = -6;
 pub const SysYield: isize = -7;
 pub const SysNBRecv: isize = -8;
+pub const SysWakeSyscallHandler: isize = -16;
 use crate::common::structures::exception_t;
 use crate::common::utils::convert_to_mut_type_ref;
 use crate::cspace::interface::CapTag;
@@ -29,13 +30,19 @@ use crate::kernel::boot::{current_fault, current_lookup_fault};
 
 use self::invocation::handleInvocation;
 
+use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, NEW_BUFFER_MAP, NewBuffer};
+use core::sync::atomic::Ordering::SeqCst;
 
 #[no_mangle]
 pub fn slowpath(syscall: usize) {
     // debug!("enter slow path: {}", syscall as isize);
     if (syscall as isize) < -8 || (syscall as isize) > -1 {
-        unsafe {
-            handleUnknownSyscall(syscall);
+        if (syscall as isize) == SysWakeSyscallHandler {
+            wake_syscall_handler();
+        } else {
+            unsafe {
+                handleUnknownSyscall(syscall);
+            }            
         }
     } else {
         handleSyscall(syscall);
@@ -131,8 +138,9 @@ fn send_fault_ipc(thread: &mut tcb_t) -> exception_t {
 
 #[inline]
 pub fn handle_fault(thread: &mut tcb_t) {
-    if send_fault_ipc(thread) != exception_t::EXCEPTION_NONE {
-        debug!("send_fault_ipc fail");
+    let fault = send_fault_ipc(thread);
+    if fault != exception_t::EXCEPTION_NONE {
+        debug!("send_fault_ipc fail: {:?}", fault);
         set_thread_state(thread, ThreadState::ThreadStateInactive);
     }
 }
@@ -203,4 +211,21 @@ fn handle_yield() {
     get_currenct_thread().sched_dequeue();
     get_currenct_thread().sched_append();
     rescheduleRequired();
+}
+
+fn wake_syscall_handler() {
+    debug!("wake_syscall_handler: enter");
+    if let Some(cid) = get_currenct_thread().asyncSysHandlerCid {
+        debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
+        for item in unsafe { &NEW_BUFFER_MAP } {
+            if item.cid.0 == cid{
+                let new_buffer = item.buf;
+                if new_buffer.recv_req_status.load(SeqCst) {
+                    debug!("wake_syscall_handler: wake cid: {}", item.cid.0);
+                    coroutine_wake(&item.cid);
+                }
+                break;
+            }
+        }
+    }
 }

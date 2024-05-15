@@ -74,3 +74,56 @@ impl Future for YieldHelper {
         return Poll::Ready(());
     }
 }
+
+#[derive(Copy, Clone)]
+pub struct RingBuffer<T, const SIZE: usize> {
+    data: [T; SIZE],
+    pub start: usize,
+    pub end: usize,
+}
+
+impl<T, const SIZE: usize> RingBuffer<T, SIZE> where T: Default + Copy + Clone {
+    pub fn new() -> Self {
+        Self {
+            data: [T::default(); SIZE],
+            start: 0,
+            end: 0,
+        }
+    }
+
+    #[inline]
+    pub fn size(&self) -> usize {
+        (self.end + SIZE - self.start) % SIZE
+    }
+
+    #[inline]
+    pub fn empty(&self) -> bool {
+        self.end == self.start
+    }
+
+    #[inline]
+    pub fn full(&self) -> bool {
+        (self.end + 1) % SIZE == self.start
+    }
+
+    #[inline]
+    pub fn push(&mut self, item: &T) -> Result<(), ()> {
+        if !self.full() {
+            self.data[self.end] = *item;
+            self.end = (self.end + 1) % SIZE;
+            return Ok(());
+        }
+        Err(())
+    }
+
+    #[inline]
+    pub fn pop(&mut self) -> Option<T> {
+        return if !self.empty() {
+            let ans = self.data[self.start];
+            self.start = (self.start + 1) % SIZE;
+            Some(ans)
+        } else {
+            None
+        }
+    }
+}
