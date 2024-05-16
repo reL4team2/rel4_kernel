@@ -19,8 +19,8 @@ pub const SysWakeSyscallHandler: isize = -16;
 use crate::common::structures::exception_t;
 use crate::common::utils::convert_to_mut_type_ref;
 use crate::cspace::interface::CapTag;
-use crate::deps::handleUnknownSyscall;
-use crate::task_manager::{schedule, activateThread, tcb_t, set_thread_state, ThreadState, get_currenct_thread, capRegister, rescheduleRequired};
+use crate::deps::{handleUnknownSyscall, ipi_send_mask};
+use crate::task_manager::{schedule, activateThread, tcb_t, set_thread_state, ThreadState, get_currenct_thread, capRegister, rescheduleRequired, get_idle_cpu_index};
 use crate::task_manager::ipc::{endpoint_t, notification_t};
 pub use utils::*;
 
@@ -32,6 +32,7 @@ use self::invocation::handleInvocation;
 
 use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, NEW_BUFFER_MAP, NewBuffer};
 use core::sync::atomic::Ordering::SeqCst;
+use crate::config::IRQConst::INTERRUPT_IPI_2;
 
 #[no_mangle]
 pub fn slowpath(syscall: usize) {
@@ -216,7 +217,14 @@ fn handle_yield() {
 fn wake_syscall_handler() {
     // debug!("wake_syscall_handler: enter");
     if let Some(cid) = get_currenct_thread().asyncSysHandlerCid {
-        debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
+        // debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
         coroutine_wake(&cid);
+        // if let Some(idle_cpu) = get_idle_cpu_index() {
+        //     // send ipi
+        //     let mask: usize = 1 << idle_cpu;
+        //     unsafe {
+        //         ipi_send_mask(INTERRUPT_IPI_2 as usize, mask, false);
+        //     }
+        // }
     }
 }

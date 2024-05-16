@@ -28,7 +28,7 @@ use crate::config::USER_TOP;
 
 
 pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: &mut tcb_t, sender_id: usize) {
-    debug!("async_syscall_handler: enter");
+    // debug!("async_syscall_handler: enter");
     // 异常处理
     let error_id: isize = -1;
     if sender_id == (error_id as usize) {

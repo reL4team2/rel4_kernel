@@ -5,7 +5,7 @@ use log::debug;
 use riscv::register::scause;
 use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, IPCItem, NEW_BUFFER_MAP, NewBuffer};
 use crate::boot::cpu_idle;
-use crate::task_manager::{activateThread, schedule, tcb_t, timerTick};
+use crate::task_manager::{activateThread, get_currenct_thread, get_idle_thread, schedule, tcb_t, timerTick};
 use crate::task_manager::ipc::notification_t;
 use crate::config::{irqInvalid, maxIRQ};
 use crate::interrupt::*;
@@ -16,6 +16,7 @@ use crate::uintr::uipi_send;
 use crate::vspace::kpptr_to_paddr;
 use core::sync::atomic::Ordering::SeqCst;
 use crate::common::utils::convert_to_option_mut_type_ref;
+use crate::config::IRQConst::INTERRUPT_IPI_2;
 
 
 #[no_mangle]
@@ -128,7 +129,7 @@ pub fn handleInterrupt(irq: usize) {
             //     // debug!("wake cid: {}", item.cid.0);
             //     // coroutine_wake(&item.cid);
             // }
-            if cpu_id() == 3 {
+            if get_currenct_thread().get_ptr() != get_idle_thread().get_ptr() {
                 coroutine_run_until_blocked();
             }
             timerTick();
@@ -136,7 +137,13 @@ pub fn handleInterrupt(irq: usize) {
         }
         #[cfg(feature = "ENABLE_SMP")]
         IRQState::IRQIPI => {
-            unsafe { crate::deps::handleIPI(irq, true) };
+            if irq == INTERRUPT_IPI_2 as usize {
+                // debug!("handle coroutine run");
+                coroutine_run_until_blocked();
+            } else {
+                unsafe { crate::deps::handleIPI(irq, true) };
+            }
+
         }
         IRQState::IRQReserved => {
             debug!("Received unhandled reserved IRQ: {}\n", irq);

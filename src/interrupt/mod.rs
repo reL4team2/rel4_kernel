@@ -139,7 +139,9 @@ pub fn ackInterrupt(irq: usize) {
         return;
     }
     #[cfg(feature = "ENABLE_SMP")] {
-        if irq == IRQConst::INTERRUPT_IPI_0 as usize || irq == IRQConst::INTERRUPT_IPI_1 as usize {
+        if irq == IRQConst::INTERRUPT_IPI_0 as usize
+            || irq == IRQConst::INTERRUPT_IPI_1 as usize
+            || irq == IRQConst::INTERRUPT_IPI_2 as usize {
             unsafe { ipi_clear_irq(irq); }
         }
     }

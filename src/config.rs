@@ -115,6 +115,8 @@ pub enum IRQConst {
     INTERRUPT_IPI_0,
     #[cfg(feature = "ENABLE_SMP")]
     INTERRUPT_IPI_1,
+    #[cfg(feature = "ENABLE_SMP")]
+    INTERRUPT_IPI_2,
     KERNEL_TIMER_IRQ,
 }
 
