@@ -14,7 +14,7 @@ use crate::{
     common::utils::cpu_id,
     deps::{doMaskReschedule, ksIdleThreadTCB, kernel_stack_alloc}
 };
-use crate::boot::cpu_idle;
+use crate::boot::cpu_prio;
 
 #[cfg(feature = "ENABLE_SMP")]
 #[derive(Debug, Copy, Clone)]
@@ -540,30 +540,19 @@ pub fn create_idle_thread() {
 fn idle_thread() {
     unsafe {
         loop {
-            cpu_idle[cpu_id()] = true;
+            cpu_prio[cpu_id()] = 256;
             asm!("wfi");
         }
     }
 }
 
-pub fn get_idle_cpu_index() -> Option<usize> {
+pub fn get_idle_cpu_index(prio: usize) -> Option<usize> {
     unsafe {    
-        for (index, flag) in cpu_idle.into_iter().enumerate() {
-            if flag {
+        for (index, core_prio) in cpu_prio.into_iter().enumerate() {
+            if prio < core_prio {
                 return Some(index);
             }
         }
     }
     return None;
 }
-
-// return selected CPU index
-// fn try_run_async_syscall_coroutine() -> Option<usize> {
-//     let cpu_index = get_idle_cpu_index();
-//     if cpu_index < 0 {
-//         return None;
-//     }
-//     // todo: run async syscall coroutine
-//     //IPI河间终端，false,ipi = 0(irq_async_syscall_ipi), mask:CPU index
-//     return Some(cpu_index as usize);
-// }

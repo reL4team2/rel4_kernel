@@ -4,7 +4,7 @@ use crate::cspace::interface::CapTag;
 use log::debug;
 use riscv::register::scause;
 use crate::async_runtime::{coroutine_run_until_blocked, coroutine_wake, IPCItem, NEW_BUFFER_MAP, NewBuffer};
-use crate::boot::cpu_idle;
+use crate::boot::cpu_prio;
 use crate::task_manager::{activateThread, get_currenct_thread, get_idle_thread, schedule, tcb_t, timerTick};
 use crate::task_manager::ipc::notification_t;
 use crate::config::{irqInvalid, maxIRQ};
@@ -38,8 +38,8 @@ pub fn handleInterruptEntry() -> exception_t {
     if irq != irqInvalid {
         handleInterrupt(irq);
     } else {
-        debug!("Spurious interrupt!");
-        debug!("Superior IRQ!! SIP {:#x}\n", read_sip());
+        // debug!("Spurious interrupt!");
+        // debug!("Superior IRQ!! SIP {:#x}\n", read_sip());
     }
 
     schedule();
@@ -63,7 +63,7 @@ pub unsafe fn send_net_uintr() {
 #[no_mangle]
 pub fn handleInterrupt(irq: usize) {
     unsafe {
-        cpu_idle[cpu_id()] = false;
+        cpu_prio[cpu_id()] = 0;
     }
     // debug!("irq: {}", irq);
     if unlikely(irq > maxIRQ) {
@@ -101,17 +101,19 @@ pub fn handleInterrupt(irq: usize) {
                                     NET_INTR_CNT += 1;
                                     new_buffer.recv_req_status.store(true, SeqCst);
                                     send_net_uintr();
-                                    debug!("NET INTR CNT: {}", NET_INTR_CNT);
+                                    // debug!("NET INTR CNT: {}", NET_INTR_CNT);
                                 }
                                 break;
                             }
                         }
+                    } else {
+                        send_net_uintr();
                     }
                 }
                 // NET_INTR_CNT += 1;
-                send_net_uintr();
                 // debug!("NET_INTR_CNT: {}", NET_INTR_CNT);
                 // convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
+                // ntfn.send_signal(1);
 
             } else {
                 debug!("no ntfn signal");

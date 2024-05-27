@@ -219,12 +219,12 @@ fn wake_syscall_handler() {
     if let Some(cid) = get_currenct_thread().asyncSysHandlerCid {
         // debug!("wake_syscall_handler: current thread's handler cid: {:?}", cid);
         coroutine_wake(&cid);
-        // if let Some(idle_cpu) = get_idle_cpu_index() {
-        //     // send ipi
-        //     let mask: usize = 1 << idle_cpu;
-        //     unsafe {
-        //         ipi_send_mask(INTERRUPT_IPI_2 as usize, mask, false);
-        //     }
-        // }
+        if let Some(idle_cpu) = get_idle_cpu_index(get_currenct_thread().tcbPriority) {
+            // send ipi
+            let mask: usize = 1 << idle_cpu;
+            unsafe {
+                ipi_send_mask(INTERRUPT_IPI_2 as usize, mask, false);
+            }
+        }
     }
 }

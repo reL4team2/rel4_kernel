@@ -21,6 +21,18 @@ rv-plic = { git = "https://github.com/duskmoon314/rv-plic" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "a35c6e6" }
 axi-ethernet = { git = "https://github.com/zflcs/axi-ethernet.git" }
 axi-dma = { git = "https://github.com/rel4team/axi-dma.git" }
+
+[dependencies.smoltcp]
+git = "https://github.com/smoltcp-rs/smoltcp.git"
+rev = "b57e2f9e70e82a13f31d5ea17e55232c11cc2b2d"
+default-features = false
+features = [
+    "alloc", "log",   # no std
+    "medium-ethernet",
+    "proto-ipv4",
+    "socket-raw", "socket-icmp", "socket-udp", "socket-tcp",
+]
+
 [features]
 default = ["ENABLE_SMP", "ENABLE_UINTC"]
 ENABLE_SMP = []

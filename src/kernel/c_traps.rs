@@ -19,11 +19,13 @@ use crate::{
     common::utils::cpu_id, interrupt::getActiveIRQ,
     deps::{clh_is_self_in_queue, clh_lock_release, clh_lock_acquire}
 };
+use crate::boot::cpu_prio;
 use crate::riscv::read_stval;
 
 #[no_mangle]
 pub fn restore_user_context() {
     unsafe {
+        cpu_prio[cpu_id()] = get_currenct_thread().tcbPriority;
         get_currenct_thread().set_vm_root().unwrap();
         #[cfg(feature = "ENABLE_UINTC")]
         crate::uintc::uintr_return();
