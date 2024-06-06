@@ -5,7 +5,7 @@ This is Rust version of seL4.
 ```shell
 # get code
 $ mkdir rel4test && cd rel4test
-$ repo init -u https://github.com/rel4team/sel4test-manifest.git
+$ repo init -u https://github.com/rel4team/sel4test-manifest.git -b v1.0
 $ repo sync
 
 # In rel4_kernel dirctory
@@ -22,8 +22,8 @@ $ ./build.py -b
 ## How to run test?
 ```shell
 # In build dirctory
-$ ./simulate
+$ ./simulate -b <your qemu path> -M virt
 
 # In SMP version
-$ ./simulate --cpu-num 4
+$ ./simulate -b <your qemu path> -M virt --cpu-num 4
 ```
