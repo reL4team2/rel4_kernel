@@ -1,0 +1,7 @@
+[package]
+name = "sel4_cspace"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sel4_common = { path = "../sel4_common"}

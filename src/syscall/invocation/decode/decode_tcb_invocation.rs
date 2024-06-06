@@ -1,11 +1,17 @@
-use crate::{common::{message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer}, 
+/*use crate::{common::{message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer},
     sel4_config::{seL4_IllegalOperation, seL4_TruncatedMessage, seL4_RangeError, tcbCTable, tcbVTable, seL4_InvalidCapability}, 
     utils::convert_to_mut_type_ref,
-}, BIT};
-use crate::cspace::interface::{cap_t, cte_t, CapTag};
-use crate::task_manager::ipc::notification_t;
+}, BIT};*/
+
+use sel4_cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_ipc::notification_t;
 use log::debug;
-use crate::task_manager::{tcb_t, set_thread_state, get_currenct_thread, ThreadState};
+use sel4_common::BIT;
+use sel4_common::message_info::MessageLabel;
+use sel4_common::sel4_config::{seL4_IllegalOperation, seL4_InvalidCapability, seL4_RangeError, seL4_TruncatedMessage, tcbCTable, tcbVTable};
+use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+use sel4_common::utils::convert_to_mut_type_ref;
+use sel4_task::{tcb_t, set_thread_state, get_currenct_thread, ThreadState};
 
 use crate::{
     kernel::boot::{current_syscall_error, get_extra_cap_by_index},
@@ -457,7 +463,7 @@ fn decode_unbind_notification(cap: &cap_t) -> exception_t {
 
 #[cfg(feature = "ENABLE_SMP")]
 fn decode_set_affinity(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffer>) -> exception_t {
-    use crate::common::sel4_config::CONFIG_MAX_NUM_NODES;
+    use sel4_common::sel4_config::CONFIG_MAX_NUM_NODES;
 
     if length < 1 {
         debug!("TCB SetAffinity: Truncated message.");

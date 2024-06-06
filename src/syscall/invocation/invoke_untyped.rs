@@ -1,11 +1,11 @@
-use crate::common::{object::ObjectType, utils::convert_to_mut_type_ref, sel4_config::*, structures::exception_t};
+use sel4_common::{object::ObjectType, utils::convert_to_mut_type_ref, sel4_config::*, structures::exception_t, ROUND_DOWN, BIT};
 use crate::deps::tcbDebugAppend;
-use crate::task_manager::{tcb_t, get_current_domain};
-use crate::vspace::{pptr_t, VMReadWrite};
-use crate::cspace::interface::{cap_t, cte_t, insert_new_cap};
+use sel4_task::{tcb_t, get_current_domain};
+use sel4_vspace::{pptr_t, VMReadWrite};
+use sel4_cspace::interface::{cap_t, cte_t, insert_new_cap};
 use crate::syscall::{FREE_INDEX_TO_OFFSET, GET_FREE_INDEX, GET_OFFSET_FREE_PTR, OFFSET_TO_FREE_IDNEX};
 
-use crate::{utils::*, ROUND_DOWN, BIT};
+use crate::utils::*;
 
 
 fn create_new_objects(obj_type: ObjectType, parent: &mut cte_t, dest_cnode: &mut cte_t, dest_offset: usize,
@@ -15,7 +15,7 @@ fn create_new_objects(obj_type: ObjectType, parent: &mut cte_t, dest_cnode: &mut
     for i in 0..dest_length {
         let cap = create_object(obj_type, region_base + (i << object_size), user_size, device_mem);
         insert_new_cap(parent, dest_cnode.get_offset_slot(dest_offset + i), &cap);
-    }    
+    }
 }
 
 fn create_object(obj_type: ObjectType, region_base: pptr_t, user_size: usize, device_mem: usize) -> cap_t {

@@ -1,7 +1,7 @@
-use crate::common::message_info::MessageLabel;
-use crate::common::structures::exception_t;
-use crate::cspace::interface::{cap_t, cte_t};
-use crate::task_manager::tcb_t;
+use sel4_common::message_info::MessageLabel;
+use sel4_common::structures::exception_t;
+use sel4_cspace::interface::{cap_t, cte_t};
+use sel4_task::tcb_t;
 use crate::structures::lookupCapAndSlot_ret_t;
 use crate::syscall::handle_fault;
 

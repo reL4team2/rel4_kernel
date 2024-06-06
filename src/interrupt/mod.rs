@@ -2,11 +2,11 @@ pub mod handler;
 use core::arch::asm;
 
 
-use crate::common::sel4_config::CONFIG_MAX_NUM_NODES;
-use crate::common::utils::{convert_to_mut_type_ref, cpu_id};
+use sel4_common::sel4_config::CONFIG_MAX_NUM_NODES;
+use sel4_common::utils::{convert_to_mut_type_ref, cpu_id};
 use crate::BIT;
-use crate::cspace::interface::cte_t;
-use crate::vspace::pptr_t;
+use sel4_cspace::interface::cte_t;
+use sel4_vspace::pptr_t;
 
 use crate::{config::*, riscv::read_sip};
 
@@ -156,7 +156,7 @@ pub fn getActiveIRQ() -> usize {
 
     let sip = read_sip();
     #[cfg(feature = "ENABLE_SMP")] {
-        use crate::common::sbi::clear_ipi;
+        use sel4_common::sbi::clear_ipi;
         if (sip & BIT!(SIP_SEIP)) != 0 {
             irq = 0;
         } else if (sip & BIT!(SIP_SSIP)) != 0 {

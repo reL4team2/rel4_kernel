@@ -9,7 +9,7 @@ use core::mem::size_of;
 
 use crate::deps::{tcbDebugAppend, init_plat};
 use crate::{BIT, ROUND_UP};
-use crate::common::sel4_config::{PADDR_TOP, KERNEL_ELF_BASE, seL4_PageBits, PAGE_BITS};
+use sel4_common::sel4_config::{PADDR_TOP, KERNEL_ELF_BASE, seL4_PageBits, PAGE_BITS};
 use log::debug;
 use spin::Mutex;
 use riscv::register::stvec;
@@ -21,23 +21,25 @@ use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 use crate::boot::utils::paddr_to_pptr_reg;
 use crate::interrupt::set_sie_mask;
-use crate::common::sbi::{set_timer, get_time};
+use sel4_common::sbi::{set_timer, get_time};
 use crate::structures::{ndks_boot_t, region_t, p_region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion, v_region_t};
 use crate::config::*;
 
-use crate::vspace::*;
-use crate::task_manager::*;
+use sel4_vspace::*;
+use sel4_task::*;
 pub use root_server::rootserver;
 pub use utils::{write_slot, provide_cap};
 
 #[cfg(feature = "ENABLE_SMP")]
 use crate::{
-    common::utils::cpu_id,
     deps::{clh_lock_init, clh_lock_acquire}
 };
 
 #[cfg(feature = "ENABLE_SMP")]
 use core::arch::asm;
+
+#[cfg(feature = "ENABLE_SMP")]
+use sel4_common::utils::cpu_id;
 
 pub static ksNumCPUs: Mutex<usize> = Mutex::new(0);
 pub static node_boot_lock: Mutex<usize> = Mutex::new(0);
@@ -184,7 +186,7 @@ pub fn try_init_kernel(
     dtb_size: usize,
     ki_boot_end: usize
 ) -> bool {
-    crate::common::logging::init();
+    sel4_common::logging::init();
     debug!("hello logging");
     debug!("hello logging");
     let boot_mem_reuse_p_reg = p_region_t {
@@ -292,7 +294,7 @@ pub fn try_init_kernel_secondary_core(hartid: usize, core_id: usize) -> bool {
 
 #[cfg(feature = "ENABLE_SMP")]
 fn release_secondary_cores() {
-    use crate::common::sel4_config::CONFIG_MAX_NUM_NODES;
+    use sel4_common::sel4_config::CONFIG_MAX_NUM_NODES;
     *node_boot_lock.lock() = 1;
     unsafe {
         asm!("fence rw, rw");

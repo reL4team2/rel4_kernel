@@ -1,7 +1,8 @@
-use crate::common::{message_info::MessageLabel, sel4_config::{seL4_IllegalOperation, seL4_TruncatedMessage, seL4_FailedLookup, seL4_DeleteFirst}, 
-structures::{exception_t, seL4_IPCBuffer}, utils::convert_to_mut_type_ref, fault::lookup_fault_missing_capability_new};
-use crate::cspace::interface::{cap_t, cte_t, CapTag, seL4_CapRights_t};
+use sel4_common::{message_info::MessageLabel, sel4_config::{seL4_IllegalOperation, seL4_TruncatedMessage, seL4_FailedLookup, seL4_DeleteFirst},
+structures::{exception_t, seL4_IPCBuffer}, utils::convert_to_mut_type_ref};
+use sel4_cspace::interface::{cap_t, cte_t, CapTag, seL4_CapRights_t};
 use log::debug;
+use sel4_common::fault::lookup_fault_t;
 
 use crate::{
     kernel::boot::{current_syscall_error, current_lookup_fault, get_extra_cap_by_index}, 
@@ -68,7 +69,7 @@ fn decode_cnode_invoke_with_two_slot(label: MessageLabel, dest_slot: &mut cte_t,
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault = lookup_fault_missing_capability_new(src_depth);
+            current_lookup_fault = lookup_fault_t::new_missing_cap(src_depth);
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -159,7 +160,7 @@ fn decode_cnode_rotate(dest_slot: &mut cte_t, length: usize, buffer: Option<&seL
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 1;
-            current_lookup_fault = lookup_fault_missing_capability_new(src_depth);
+            current_lookup_fault = lookup_fault_t::new_missing_cap(src_depth);
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
@@ -168,7 +169,7 @@ fn decode_cnode_rotate(dest_slot: &mut cte_t, length: usize, buffer: Option<&seL
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_missing_capability_new(pivot_depth);
+            current_lookup_fault = lookup_fault_t::new_missing_cap(pivot_depth);
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }

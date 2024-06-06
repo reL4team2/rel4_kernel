@@ -1,15 +1,16 @@
 use core::intrinsics::unlikely;
 
 use crate::{config::seL4_MinPrio, kernel::boot::{current_syscall_error, current_lookup_fault}, MASK, BIT, IS_ALIGNED};
-use crate::common::{sel4_config::{seL4_IPCBufferSizeBits, seL4_AlignmentError, seL4_FailedLookup, wordBits, seL4_DeleteFirst}, utils::convert_to_mut_type_ref};
-use crate::common::{structures::{seL4_IPCBuffer, exception_t}, sel4_config::*};
-use crate::common::fault::*;
-use crate::common::sel4_config::seL4_MinUntypedBits;
-use crate::cspace::interface::{cap_t, CapTag, resolve_address_bits, cte_t, seL4_CapRights_t};
-use crate::task_manager::ipc::notification_t;
+use sel4_common::{sel4_config::{seL4_IPCBufferSizeBits, seL4_AlignmentError, seL4_FailedLookup, wordBits, seL4_DeleteFirst}, utils::convert_to_mut_type_ref};
+use sel4_common::{structures::{seL4_IPCBuffer, exception_t}, sel4_config::*};
+use sel4_common::fault::*;
+use sel4_common::sel4_config::seL4_MinUntypedBits;
+use sel4_cspace::interface::{cap_t, CapTag, resolve_address_bits, cte_t, seL4_CapRights_t};
+use sel4_ipc::notification_t;
 use log::debug;
-use crate::task_manager::*;
-use crate::vspace::maskVMRights;
+use sel4_common::registers::{msgRegister, n_msgRegisters};
+use sel4_task::{get_currenct_thread, lookupSlot_ret_t, tcb_t};
+use sel4_vspace::maskVMRights;
 use crate::kernel::boot::{current_extra_caps, current_fault};
 
 
@@ -39,28 +40,15 @@ pub fn OFFSET_TO_FREE_IDNEX(offset: usize) -> usize {
 #[no_mangle]
 pub fn getSyscallArg(i: usize, ipc_buffer: *const usize) -> usize {
     unsafe {
-        if i < n_msgRegisters {
-            return getRegister(get_currenct_thread() as *const tcb_t, msgRegister[i]);
+        return if i < n_msgRegisters {
+            // return getRegister(get_currenct_thread() as *const tcb_t, msgRegister[i]);
+            get_currenct_thread().get_register(msgRegister[i])
         } else {
-            assert!(ipc_buffer as usize != 0);
+            assert_ne!(ipc_buffer as usize, 0);
             let ptr = ipc_buffer.add(i + 1);
-            return *ptr;
+            *ptr
         }
     }
-}
-
-#[inline]
-pub fn lookup_extra_caps(thread: &tcb_t) -> exception_t {
-    unsafe {
-        match thread.lookup_extra_caps(&mut current_extra_caps.excaprefs) {
-            Ok(()) =>{},
-            Err(fault) => {
-                current_fault = fault;
-                return exception_t::EXCEPTION_LOOKUP_FAULT;
-            },
-        }
-    }
-    return exception_t::EXCEPTION_NONE;
 }
 
 #[inline]

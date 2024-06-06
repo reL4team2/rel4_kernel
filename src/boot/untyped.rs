@@ -4,12 +4,12 @@ use crate::{
     structures::{region_t, p_region_t, seL4_SlotRegion, seL4_SlotPos, seL4_UntypedDesc}
 };
 
-use crate::common::sel4_config::{seL4_MaxUntypedBits, seL4_MinUntypedBits};
+use sel4_common::sel4_config::{seL4_MaxUntypedBits, seL4_MinUntypedBits};
 use crate::{MASK, BIT, IS_ALIGNED};
-use crate::common::utils::MAX_FREE_INDEX;
-use crate::cspace::interface::*;
+use sel4_common::utils::MAX_FREE_INDEX;
+use sel4_cspace::interface::*;
 use log::debug;
-use crate::vspace::*;
+use sel4_vspace::*;
 
 pub fn create_untypeds(root_cnode_cap: &cap_t, boot_mem_reuse_reg: region_t) -> bool {
     unsafe {

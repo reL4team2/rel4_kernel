@@ -1,8 +1,9 @@
 use crate::BIT;
-use crate::common::{message_info::MessageLabel, sel4_config::*, structures::*, object::ObjectType, utils::convert_to_mut_type_ref, fault::lookup_fault_missing_capability_new};
-use crate::cspace::interface::{cap_t, cte_t, CapTag};
+use sel4_common::{message_info::MessageLabel, sel4_config::*, structures::*, object::ObjectType, utils::convert_to_mut_type_ref};
+use sel4_cspace::interface::{cap_t, cte_t, CapTag};
 use log::debug;
-use crate::task_manager::{set_thread_state, get_currenct_thread, ThreadState};
+use sel4_common::fault::lookup_fault_t;
+use sel4_task::{set_thread_state, get_currenct_thread, ThreadState};
 
 use crate::{kernel::boot::{current_syscall_error, current_lookup_fault, get_extra_cap_by_index},
     syscall::{invocation::invoke_untyped::invoke_untyped_retype, get_syscall_arg, lookup_slot_for_cnode_op},
@@ -148,7 +149,7 @@ fn get_target_cnode(node_index: usize, node_depth: usize, node_cap: &mut cap_t) 
         unsafe {
             current_syscall_error._type = seL4_FailedLookup;
             current_syscall_error.failedLookupWasSource = 0;
-            current_lookup_fault = lookup_fault_missing_capability_new(node_depth);
+            current_lookup_fault = lookup_fault_t::new_missing_cap(node_depth);
         }
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }

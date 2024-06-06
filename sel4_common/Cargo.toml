@@ -1,0 +1,12 @@
+[package]
+name = "sel4_common"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+riscv = { git = "https://gitee.com/rcore-os/riscv", features = ["inline-asm"] }
+log = "0.4.21"
+spin = { version = "0.9", features = ["use_ticket_mutex"] }
+
+[features]
+ENABLE_SMP = []

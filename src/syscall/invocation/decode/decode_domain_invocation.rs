@@ -1,9 +1,9 @@
 use core::intrinsics::unlikely;
 
-use crate::common::{message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer}, sel4_config::*, utils::convert_to_mut_type_ref};
-use crate::cspace::interface::CapTag;
+use sel4_common::{message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer}, sel4_config::*, utils::convert_to_mut_type_ref};
+use sel4_cspace::interface::CapTag;
 use log::debug;
-use crate::task_manager::{set_thread_state, get_currenct_thread, ThreadState, tcb_t};
+use sel4_task::{set_thread_state, get_currenct_thread, ThreadState, tcb_t};
 
 use crate::{kernel::boot::{current_syscall_error, get_extra_cap_by_index}, syscall::get_syscall_arg};
 

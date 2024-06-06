@@ -1,13 +1,21 @@
 use core::intrinsics::unlikely;
 
-use crate::{common::{
-    message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer}, 
-    sel4_config::*, utils::{convert_to_mut_type_ref, pageBitsForSize}, fault::*,
-}, BIT, MASK};
-use crate::cspace::interface::{cte_t, CapTag, cap_t};
+// use crate::{common::{
+//     message_info::MessageLabel, structures::{exception_t, seL4_IPCBuffer},
+//     sel4_config::*, utils::{convert_to_mut_type_ref, pageBitsForSize}, fault::*,
+// }, BIT, MASK};
+
+
+use sel4_cspace::interface::{cte_t, CapTag, cap_t};
 use log::debug;
-use crate::task_manager::{set_thread_state, get_currenct_thread, ThreadState};
-use crate::vspace::{find_vspace_for_asid, pte_t, vm_attributes_t, checkVPAlignment, get_asid_pool_by_index};
+use sel4_common::{BIT, MASK};
+use sel4_common::fault::lookup_fault_t;
+use sel4_common::message_info::MessageLabel;
+use sel4_common::sel4_config::{asidInvalid, asidLowBits, nASIDPools, seL4_AlignmentError, seL4_DeleteFirst, seL4_FailedLookup, seL4_IllegalOperation, seL4_InvalidArgument, seL4_InvalidCapability, seL4_PageBits, seL4_RevokeFirst, seL4_TruncatedMessage};
+use sel4_common::structures::{exception_t, seL4_IPCBuffer};
+use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
+use sel4_task::{set_thread_state, get_currenct_thread, ThreadState};
+use sel4_vspace::{find_vspace_for_asid, pte_t, vm_attributes_t, checkVPAlignment, get_asid_pool_by_index};
 
 use crate::{
     kernel::boot::{current_syscall_error, current_lookup_fault, get_extra_cap_by_index},
@@ -205,7 +213,7 @@ fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: Option<&seL4_
         let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
         if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
             unsafe {
-                current_lookup_fault = lookup_fault_missing_capability_new(lu_ret.ptBitsLeft);
+                current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);
                 current_syscall_error._type = seL4_FailedLookup;
                 current_syscall_error.failedLookupWasSource = false as usize;
             }

@@ -1,11 +1,12 @@
 use crate::{config::seL4_MsgLengthBits, syscall::{slowpath, SysCall, SysReplyRecv}, deps::fastpath_restore};
-use crate::cspace::compatibility::*;
-use crate::task_manager::*;
-use crate::task_manager::ipc::*;
-use crate::vspace::*;
+use sel4_cspace::compatibility::*;
+use sel4_task::*;
+use sel4_ipc::*;
+use sel4_vspace::*;
 use core::intrinsics::{likely, unlikely};
-use crate::common::{sel4_config::*, message_info::*, fault::*, utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref}};
-use crate::cspace::interface::*;
+use sel4_common::{sel4_config::*, message_info::*, fault::*, utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref}};
+use sel4_common::registers::msgRegister;
+use sel4_cspace::interface::*;
 use crate::MASK;
 
 #[inline]
@@ -19,7 +20,7 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
     let mut capGuard: usize;
     let mut radix: usize;
     let mut slot: *mut cte_t;
-    if unlikely(!cap_capType_equals(&cap, cap_cnode_cap)) {
+    if unlikely(!(cap.get_cap_type() == CapTag::CapCNodeCap)) {
         return cap_t::new_null_cap();
     }
     loop {
@@ -36,7 +37,7 @@ pub fn lookup_fp(_cap: &cap_t, cptr: usize) -> cap_t {
         cap = unsafe { (*slot).cap };
         bits += guardBits + radixBits;
 
-        if likely(!(bits < wordBits && cap_capType_equals(&cap, cap_cnode_cap))) {
+        if likely(!(bits < wordBits && cap.get_cap_type() == CapTag::CapCNodeCap)) {
             break;
         }
     }
@@ -93,7 +94,8 @@ pub fn mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(
 #[inline]
 #[no_mangle]
 pub fn isValidVTableRoot_fp(cap: &cap_t) -> bool {
-    cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
+    // cap_capType_equals(cap, cap_page_table_cap) && cap.get_pt_is_mapped() != 0
+    cap.get_cap_type() == CapTag::CapPageTableCap && cap.get_pt_is_mapped() != 0
 }
 
 #[inline]
@@ -142,7 +144,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     }
     let ep_cap = lookup_fp(&current.get_cspace(tcbCTable).cap, cptr);
     if unlikely(
-        !cap_capType_equals(&ep_cap, cap_endpoint_cap)
+        !(ep_cap.get_cap_type() == CapTag::CapEndpointCap)
             || (ep_cap.get_ep_can_send() == 0),
     ) {
         slowpath(SysCall as usize);
@@ -208,7 +210,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     let cap_pd = new_vtable.get_pt_base_ptr() as *mut pte_t;
     let stored_hw_asid: pte_t = pte_t { words: [new_vtable.get_pt_mapped_asid()] };
     switchToThread_fp(dest as *mut tcb_t, cap_pd, stored_hw_asid);
-    seL4_MessageInfo_ptr_set_capsUnwrapped((&mut info) as *mut seL4_MessageInfo_t, 0);
+    info.set_caps_unwrapped(0);
     let msgInfo1 = info.to_word();
     let badge = ep_cap.get_ep_badge();
     unsafe {
@@ -274,7 +276,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
     thread_state_ptr_mset_blockingObject_tsType(
         &mut current.tcbState,
         ep.get_ptr(),
-        ThreadStateBlockedOnReceive,
+        ThreadState::ThreadStateBlockedOnReceive as usize,
     );
     current.tcbState.set_blocking_ipc_can_grant(ep_cap.get_ep_can_grant());
 

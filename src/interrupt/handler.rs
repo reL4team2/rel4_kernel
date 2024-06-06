@@ -1,9 +1,9 @@
 use core::intrinsics::unlikely;
-use crate::common::structures::exception_t;
-use crate::cspace::interface::CapTag;
+use sel4_common::structures::exception_t;
+use sel4_cspace::interface::CapTag;
 use log::debug;
-use crate::task_manager::{activateThread, schedule, timerTick};
-use crate::task_manager::ipc::notification_t;
+use sel4_task::{activateThread, schedule, timerTick};
+use sel4_ipc::notification_t;
 use crate::config::{irqInvalid, maxIRQ};
 use crate::interrupt::*;
 use crate::riscv::resetTimer;

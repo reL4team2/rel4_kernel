@@ -3,8 +3,9 @@ pub mod invocation;
 pub mod syscall_reply;
 
 use core::intrinsics::unlikely;
-use crate::common::fault::{FaultType, lookup_fault_t, seL4_Fault_t};
-use crate::common::sel4_config::tcbCaller;
+use sel4_common::fault::{FaultType, lookup_fault_t, seL4_Fault_t};
+use sel4_common::registers::capRegister;
+use sel4_common::sel4_config::tcbCaller;
 
 pub const SysCall: isize = -1;
 pub const SysReplyRecv: isize = -2;
@@ -14,12 +15,12 @@ pub const SysRecv: isize = -5;
 pub const SysReply: isize = -6;
 pub const SysYield: isize = -7;
 pub const SysNBRecv: isize = -8;
-use crate::common::structures::exception_t;
-use crate::common::utils::convert_to_mut_type_ref;
-use crate::cspace::interface::CapTag;
+use sel4_common::structures::exception_t;
+use sel4_common::utils::convert_to_mut_type_ref;
+use sel4_cspace::interface::CapTag;
 use crate::deps::handleUnknownSyscall;
-use crate::task_manager::{schedule, activateThread, tcb_t, set_thread_state, ThreadState, get_currenct_thread, capRegister, rescheduleRequired};
-use crate::task_manager::ipc::{endpoint_t, notification_t};
+use sel4_task::{schedule, activateThread, tcb_t, set_thread_state, ThreadState, get_currenct_thread, rescheduleRequired};
+use sel4_ipc::{endpoint_t, notification_t, Transfer};
 pub use utils::*;
 
 use crate::{kernel::c_traps::restore_user_context, config::irqInvalid, interrupt::getActiveIRQ};

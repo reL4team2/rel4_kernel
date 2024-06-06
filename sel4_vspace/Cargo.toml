@@ -1,0 +1,13 @@
+[package]
+name = "sel4_vspace"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sel4_cspace = { path = "../sel4_cspace" }
+sel4_common = { path = "../sel4_common" }
+riscv = { git = "https://gitee.com/rcore-os/riscv", features = ["inline-asm"] }
+
+
+[features]
+ENABLE_SMP = []

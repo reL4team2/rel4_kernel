@@ -1,6 +1,6 @@
-use crate::common::fault::seL4_Fault_t;
-use crate::common::structures::exception_t;
-use crate::task_manager::{activateThread, get_currenct_thread, schedule};
+use sel4_common::fault::seL4_Fault_t;
+use sel4_common::structures::exception_t;
+use sel4_task::{activateThread, get_currenct_thread, schedule};
 use crate::kernel::boot::current_fault;
 use crate::config::*;
 use crate::riscv::read_stval;

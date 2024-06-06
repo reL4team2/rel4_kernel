@@ -1,8 +1,8 @@
-use crate::common::{structures::exception_t, sel4_config::{tcbCaller, seL4_IllegalOperation, seL4_DeleteFirst}, utils::convert_to_mut_type_ref};
-use crate::cspace::interface::{cte_t, CapTag, cte_move, cap_t, cte_insert, cte_swap, seL4_CapRights_t};
-use crate::task_manager::ipc::endpoint_t;
+use sel4_common::{structures::exception_t, sel4_config::{tcbCaller, seL4_IllegalOperation, seL4_DeleteFirst}, utils::convert_to_mut_type_ref};
+use sel4_cspace::interface::{cte_t, CapTag, cte_move, cap_t, cte_insert, cte_swap, seL4_CapRights_t};
+use sel4_ipc::endpoint_t;
 use log::debug;
-use crate::task_manager::{get_currenct_thread, set_thread_state, ThreadState};
+use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 
 use crate::{syscall::mask_cap_rights, kernel::boot::current_syscall_error};
 

@@ -8,16 +8,18 @@ use crate::{
     riscv::read_scause, syscall::slowpath
 };
 
-use crate::task_manager::*;
+use sel4_task::*;
 use crate::exception::{handleUserLevelFault, handleVMFaultEvent};
 
 use crate::interrupt::handler::handleInterruptEntry;
 
 #[cfg(feature = "ENABLE_SMP")]
 use crate::{
-    common::utils::cpu_id, interrupt::getActiveIRQ,
+    interrupt::getActiveIRQ,
     deps::{clh_is_self_in_queue, clh_lock_release, clh_lock_acquire}
 };
+
+use sel4_common::utils::cpu_id;
 
 #[no_mangle]
 pub fn restore_user_context() {

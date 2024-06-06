@@ -1,8 +1,10 @@
-use crate::{common::{structures::exception_t, utils::{convert_to_mut_type_ref, pageBitsForSize}, sel4_config::*, message_info::seL4_MessageInfo_t}, MASK};
-use crate::common::utils::MAX_FREE_INDEX;
-use crate::cspace::interface::{cap_t, cte_t, seL4_CapRights_t, cte_insert};
-use crate::task_manager::{get_currenct_thread, msgInfoRegister, set_thread_state, ThreadState};
-use crate::vspace::{pte_t, sfence, pptr_to_paddr, unmapPage, vm_attributes_t, maskVMRights, pptr_t, set_asid_pool_by_index, asid_pool_t, copyGlobalMappings};
+use sel4_common::{structures::exception_t, utils::{convert_to_mut_type_ref, pageBitsForSize}, sel4_config::*, message_info::seL4_MessageInfo_t};
+use sel4_common::MASK;
+use sel4_common::registers::msgInfoRegister;
+use sel4_common::utils::MAX_FREE_INDEX;
+use sel4_cspace::interface::{cap_t, cte_t, seL4_CapRights_t, cte_insert};
+use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
+use sel4_vspace::{pte_t, sfence, pptr_to_paddr, unmapPage, vm_attributes_t, maskVMRights, pptr_t, set_asid_pool_by_index, asid_pool_t, copyGlobalMappings};
 
 use crate::{utils::clear_memory, config::badgeRegister, kernel::boot::current_lookup_fault};
 
