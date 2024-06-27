@@ -9,7 +9,6 @@
 #![allow(while_true)]
 #![feature(alloc_error_handler)]
 #![feature(panic_info_message)]
-#![feature(stdsimd)]
 #![feature(linkage)]
 
 
