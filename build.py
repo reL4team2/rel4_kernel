@@ -23,6 +23,10 @@ def parse_args():
                         help="baseline switch")
     parser.add_argument('-c', '--cpu', dest="cpu_nums", type=int,
                         help="kernel & qemu cpu nums", default=1)
+    # parser.add_argument('-a','--arch', dest="arch",type=str,
+    #                     help="kernel arch",default="riscv64imac-unknown-none-elf")
+    parser.add_argument('-a','--arch', dest="arch",type=str,
+                        help="kernel arch",default="aarch64-unknown-linux-gnu")
     args = parser.parse_args()
     return args
 
@@ -31,13 +35,19 @@ def exec_shell(shell_command):
     return ret_code == 0
 
 def clean_config():
-    shell_command = "cd ../kernel && git checkout 552f173d3d7780b33184ebedefc58329ea5de3ba"
+    shell_command = "cd ../kernel && git checkout 37a3dc8f26da380e539470aac6d2d53286a92d3c"
     exec_shell(shell_command)
 
 if __name__ == "__main__":
     args = parse_args()
     clean_config()
     progname = sys.argv[0]
+    
+    if args.arch != "riscv64imac-unknown-none-elf" and args.arch != "aarch64-unknown-linux-gnu":
+        clean_config()
+        sys.exit(-1)
+    
+    print("target is:" + args.arch)
     
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
@@ -49,21 +59,29 @@ if __name__ == "__main__":
             sys.exit(-1)
     else:
         if args.cpu_nums > 1:
-            if not exec_shell("cargo build --release --target riscv64imac-unknown-none-elf --features ENABLE_SMP"):
+            if not exec_shell("cargo build --release --target " + args.arch + " --features ENABLE_SMP"):
                 clean_config()
                 sys.exit(-1)
         else:
-            if not exec_shell("cargo build --release --target riscv64imac-unknown-none-elf"):
+            if not exec_shell("cargo build --release --target " + args.arch):
                 clean_config()
                 sys.exit(-1)
     
     if args.cpu_nums > 1:
-        shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE -DSMP=TRUE && ninja"
+        shell_command = ""
+        if args.arch == "riscv64imac-unknown-none-elf":
+	        shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE -DSMP=TRUE && ninja"
+        elif args.arch == "aarch64-unknown-linux-gnu":
+            shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=qemu-arm-virt -DSIMULATION=TRUE -DSMP=TRUE && ninja"
         if not exec_shell(shell_command):
             clean_config()
             sys.exit(-1)
         sys.exit(0)
-    shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE && ninja"
+    shell_command = ""
+    if args.arch == "riscv64imac-unknown-none-elf":
+        shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE && ninja"
+    elif args.arch == "aarch64-unknown-linux-gnu":
+        shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=qemu-arm-virt -DSIMULATION=TRUE && ninja"
     if not exec_shell(shell_command):
         clean_config()
         sys.exit(-1)
