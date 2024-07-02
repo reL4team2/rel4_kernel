@@ -25,3 +25,7 @@ ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENA
 
 [profile.release]
 lto = true
+panic = "abort"  
+ 
+[profile.dev]  
+panic = "abort"
