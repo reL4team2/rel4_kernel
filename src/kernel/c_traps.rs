@@ -23,6 +23,8 @@ use sel4_common::utils::cpu_id;
 
 #[no_mangle]
 pub fn restore_user_context() {
+	
+	#[cfg(target_arch = "riscv64")]
     unsafe {
         // debug!("restore_user_context");
         let cur_thread_reg = get_currenct_thread().tcbArch.registers.as_ptr() as usize;

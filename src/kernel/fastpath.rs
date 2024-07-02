@@ -114,7 +114,7 @@ pub fn fastpath_copy_mrs(length: usize, src: &mut tcb_t, dest: &mut tcb_t) {
         dest.set_register(reg, src.get_register(reg));
     }
 }
-
+#[cfg(target_arch = "riscv64")]
 core::arch::global_asm!(include_str!("restore_fp.S"));
 
 // #[inline]

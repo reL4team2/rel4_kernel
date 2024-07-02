@@ -1,6 +1,7 @@
 use core::arch::asm;
 
 use crate::config::RESET_CYCLES;
+#[cfg(target_arch = "riscv64")]
 use sel4_common::sbi::set_timer;
 
 pub fn read_stval() -> usize {

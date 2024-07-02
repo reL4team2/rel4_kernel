@@ -1,5 +1,5 @@
 use log::error;
-
+#[cfg(target_arch = "riscv64")]
 use sel4_common::sbi::shutdown;
 use core::panic::PanicInfo;
 

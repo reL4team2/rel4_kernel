@@ -1,6 +1,12 @@
 use riscv::register::satp;
+#[cfg(target_arch = "riscv64")]
 use sel4_common::sbi::remote_sfence_vma;
 use super::structures::paddr_t;
+
+#[cfg(target_arch = "aarch64")]
+pub fn remote_sfence_vma(hart_mask: usize, start: usize, size: usize) {
+    // tmp empty funcion and useless, TODO: clean
+}
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

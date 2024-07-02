@@ -21,6 +21,7 @@ use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 use crate::boot::utils::paddr_to_pptr_reg;
 use crate::interrupt::set_sie_mask;
+#[cfg(target_arch = "riscv64")]
 use sel4_common::sbi::{set_timer, get_time};
 use crate::structures::{ndks_boot_t, region_t, p_region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion, v_region_t};
 use crate::config::*;
@@ -56,20 +57,65 @@ pub static mut ndks_boot: ndks_boot_t = ndks_boot_t {
 
 
 fn init_cpu() {
+	let haveHWFPU:bool;
     activate_kernel_vspace();
-    extern "C" {
-        fn trap_entry();
-    }
-    unsafe {
-        stvec::write(trap_entry as usize, TrapMode::Direct);
-    }
-    #[cfg(feature = "ENABLE_SMP")] {
-        set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE) | BIT!(SIE_SSIE));
-    }
-    #[cfg(not(feature = "ENABLE_SMP"))] {
-        set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE));
-    }
+	// if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {	// copied from C sel4, no arm hypervisor, so no change
+    //     vcpu_boot_init();
+    // }
+	// #ifdef CONFIG_HARDWARE_DEBUG_API
+	//     if (!Arch_initHardwareBreakpoints()) {
+	//         printf("Kernel built with CONFIG_HARDWARE_DEBUG_API, but this board doesn't "
+	//                "reliably support it.\n");
+	//         return false;
+	//     }
+	// #endif
+	#[cfg(target_arch = "riscv64")]
+	{
+		extern "C" {
+			fn trap_entry();
+		}
+		unsafe {
+			stvec::write(trap_entry as usize, TrapMode::Direct);
+		}
+	}
+	#[cfg(target_arch = "aarch64")]
+	{
+		// Setup kernel stack pointer.
+	}
+
+	#[cfg(target_arch = "aarch64")]
+	{
+		// CPU's exception vector table
+	}
+
+	#[cfg(target_arch = "aarch64")]
+	{
+		// disable fpu
+	}
+
+	#[cfg(target_arch = "riscv64")]
+    {
+		#[cfg(feature = "ENABLE_SMP")] {
+			set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE) | BIT!(SIE_SSIE));
+		}
+		#[cfg(not(feature = "ENABLE_SMP"))] {
+			set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE));
+		}
+	}
+	#[cfg(target_arch = "aarch64")]
+	{
+		// initLocalIRQController
+	}
+	#[cfg(target_arch = "aarch64")]
+	{
+		// armv_init_user_access
+	}
+	#[cfg(target_arch = "riscv64")]
     set_timer(get_time() + RESET_CYCLES);
+	#[cfg(target_arch = "aarch64")]
+	{
+		//initTimer
+	}
 }
 
 fn calculate_extra_bi_size_bits(size: usize) -> usize {

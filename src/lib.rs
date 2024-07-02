@@ -13,6 +13,7 @@
 
 
 extern crate core;
+#[cfg(target_arch = "riscv64")]
 use sel4_common::sbi::shutdown;
 mod config;
 // mod console;

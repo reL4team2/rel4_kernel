@@ -9,6 +9,7 @@ mod deps;
 pub mod sel4_config;
 pub mod structures;
 pub mod utils;
+#[cfg(target_arch = "riscv64")]
 pub mod sbi;
 mod console;
 pub mod logging;
