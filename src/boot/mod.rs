@@ -4,7 +4,10 @@ mod root_server;
 mod untyped;
 mod utils;
 mod interface;
+#[cfg(target_arch = "aarch64")]
 mod fpu;
+#[cfg(target_arch = "aarch64")]
+mod gic_v2;
 
 use core::mem::size_of;
 
@@ -13,15 +16,14 @@ use crate::{BIT, ROUND_UP};
 use sel4_common::sel4_config::{seL4_PageBits, CONFIG_KERNEL_STACK_BITS, CURRENT_CPU_INDEX, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use log::debug;
 use sel4_common::utils::cpu_id;
+use sel4_common::deps::kernel_stack_alloc;
 use spin::Mutex;
-#[cfg(target_arch = "riscv")]
+#[cfg(target_arch = "riscv64")]
 use riscv::register::{stvec,utvec::TrapMode};
 #[cfg(target_arch = "aarch64")]
-use aarch64::regs::{TPIDR_EL1,VBAR_EL1};
+use aarch64_cpu::registers::*;
 #[cfg(target_arch = "aarch64")]
-use aarch64::barrier::{dsb, isb};
-#[cfg(target_arch = "aarch64")]
-use aarch64::cache::SY;
+use aarch64_cpu::asm::barrier::{dsb,isb,SY};
 
 use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
@@ -111,7 +113,7 @@ fn init_cpu() -> bool {
 	}
 	#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
 	{
-		TPIDR_EL1::write(stack_address)
+		TPIDR_EL1.set(stack_top)
 	}
 	// CPU's exception vector table
 	extern "C" {
@@ -121,16 +123,16 @@ fn init_cpu() -> bool {
 		dsb(SY);
 		#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
 		{
-			VBAR_EL1::write(arm_vector_table as usize);
+			VBAR_EL1.set(arm_vector_table as u64);
 		}
 		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
 		{
 			// TODO: the rcore-os/aarh64 module have no vbar_el2
-			// VBAR_EL2::write(arm_vector_table as usize);
+			VBAR_EL2.set(arm_vector_table as u64);
 		}
-		isb();
+		isb(SY);
 	}
-	// disable fpu
+	// fpu, TODO, we haven't realized it now
 	let mut haveHWFPU:bool;
 	// detect have fpu
 	haveHWFPU = fpu::fpsimd_HWCapTest();
@@ -295,9 +297,9 @@ pub fn try_init_kernel(
     let bi_frame_vptr = ipcbuf_vptr + BIT!(PAGE_BITS);
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
     rust_map_kernel_window();
-	#[cfg(target_arch = "riscv")]
+	#[cfg(target_arch = "riscv64")]
     init_cpu();
-	#[cfg(target_arch = "riscv")]
+	#[cfg(target_arch = "aarch64")]
 	if init_cpu() == false {
 		debug!("ERROR: CPU init failed");
 		return false;

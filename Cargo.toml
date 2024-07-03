@@ -13,7 +13,7 @@ crate-type = ["staticlib"]
 [dependencies]
 buddy_system_allocator = "0.6"
 riscv = { git = "https://gitee.com/rcore-os/riscv", features = ["inline-asm"] }
-aarch64 = { git = "https://gitee.com/rcore-os/aarch64" }
+aarch64-cpu = "9.4.0"
 log = "0.4"
 spin = { version = "0.9", features = ["use_ticket_mutex"] }
 sel4_common = { path = "./sel4_common" }

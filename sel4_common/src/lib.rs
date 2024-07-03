@@ -5,7 +5,7 @@
 
 #[cfg(feature = "ENABLE_SMP")]
 pub mod smp;
-mod deps;
+pub mod deps;
 pub mod sel4_config;
 pub mod structures;
 pub mod utils;
