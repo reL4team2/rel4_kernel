@@ -1,0 +1,35 @@
+name: Test Kernel
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    container:
+      image: trustworthysystems/sel4
+      volumes:
+        - .:/code
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: rel4_kernel
+    - uses: actions/checkout@v4
+      with:
+        ref: 'mi_dev'
+        path: kernel
+        repository: rel4team/seL4_c_impl
+    - name: Install generaic tools
+      run: apt update && apt install -y wget gcc-riscv64-linux-gnu
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: nightly-2024-02-01
+        components: rust-src
+        rustflags: 
+    - name: Make rel4_kernel
+      run: cd rel4_kernel && make run
+    - name: Build kernel
+      run: cd kernel && cmake cmake -DCROSS_COMPILER_PREFIX=riscv64-linux-gnu- -C kernel-settings-riscv64.cmake -G Ninja -S . -B build
+    - name: Build Kernel
+      run: cd kernel && ninja -C build
