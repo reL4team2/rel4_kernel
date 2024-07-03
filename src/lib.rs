@@ -24,6 +24,8 @@ mod structures;
 mod object;
 #[cfg(target_arch = "riscv64")]
 mod riscv;
+#[cfg(target_arch = "aarch64")]
+mod arm_gic;
 mod syscall;
 mod boot;
 mod interrupt;

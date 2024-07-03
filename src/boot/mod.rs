@@ -84,6 +84,8 @@ fn init_cpu() {
 
 #[cfg(target_arch = "aarch64")]
 fn init_cpu() -> bool {
+    use arm_gic::gic_v2;
+
 	#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
 	{
 		// TODO
@@ -153,7 +155,7 @@ fn init_cpu() -> bool {
 		}
 	}
 	// initLocalIRQController
-
+	gic_v2::cpu_iface_init();
 	// armv_init_user_access
 
 	//initTimer
