@@ -8,6 +8,16 @@ name = "rustlib"
 path = "src/lib.rs"
 crate-type = ["staticlib"]
 
+[workspace]
+members = [
+    ".",
+    "sel4_common",
+    "sel4_cspace",
+    "sel4_ipc",
+    "sel4_vspace",
+    "sel4_task",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -22,6 +32,7 @@ sel4_cspace = { path = "./sel4_cspace" }
 sel4_vspace = { path = "./sel4_vspace"}
 sel4_task = { path = "./sel4_task" }
 sel4_ipc = { path = "./sel4_ipc" }
+
 [features]
 ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENABLE_SMP"]
 ARM_HYPERVISOR_SUPPORT = ["sel4_common/ARM_HYPERVISOR_SUPPORT"]
@@ -31,7 +42,3 @@ PLAT_QEMU_ARM_VIRT = []
 
 [profile.release]
 lto = true
-panic = "abort"  
- 
-[profile.dev]  
-panic = "abort"

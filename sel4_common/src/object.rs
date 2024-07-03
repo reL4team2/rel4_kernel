@@ -15,7 +15,6 @@ pub enum ObjectType {
 
 pub const seL4_ObjectTypeCount: usize = ObjectType::PageTableObject as usize + 1;
 
-
 impl ObjectType {
     pub fn get_object_size(&self, user_object_size: usize) -> usize {
         match self {
@@ -46,16 +45,13 @@ impl ObjectType {
         if value >= seL4_ObjectTypeCount {
             return None;
         }
-        unsafe {
-            Some(core::mem::transmute::<u8, ObjectType>(value as u8))
-        }
+        unsafe { Some(core::mem::transmute::<u8, ObjectType>(value as u8)) }
     }
 
     pub fn is_arch_type(self) -> bool {
         match self {
             Self::GigaPageObject | Self::NormalPageObject | Self::MegaPageObject => true,
-            _ => false
+            _ => false,
         }
     }
-
 }

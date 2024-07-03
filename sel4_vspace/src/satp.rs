@@ -1,12 +1,7 @@
-use riscv::register::satp;
-#[cfg(target_arch = "riscv64")]
-use sel4_common::sbi::remote_sfence_vma;
 use super::structures::paddr_t;
-
-#[cfg(target_arch = "aarch64")]
-pub fn remote_sfence_vma(hart_mask: usize, start: usize, size: usize) {
-    // tmp empty funcion and useless, TODO: clean
-}
+use riscv::register::satp;
+#[cfg(feature = "ENABLE_SMP")]
+use sel4_common::sbi::remote_sfence_vma;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,11 +44,13 @@ pub fn sfence_local() {
 #[cfg(not(feature = "ENABLE_SMP"))]
 #[inline]
 pub fn sfence() {
+    #[cfg(target_arch = "riscv64")]
     unsafe {
         core::arch::asm!("sfence.vma");
     }
+    #[cfg(target_arch = "aarch64")]
+    todo!("sfence")
 }
-
 
 #[inline]
 #[no_mangle]

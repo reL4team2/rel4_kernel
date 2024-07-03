@@ -1,6 +1,2 @@
 [build]
-target = 'aarch64-unknown-linux-gnu'
-# target = "riscv64imac-unknown-none-elf"
-
-[target.aarch64-unknown-linux-gnu]
-[target.riscv64imac-unknown-none-elf]
+target = "riscv64imac-unknown-none-elf"
