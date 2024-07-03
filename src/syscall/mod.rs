@@ -15,7 +15,7 @@ pub const SysRecv: isize = -5;
 pub const SysReply: isize = -6;
 pub const SysYield: isize = -7;
 pub const SysNBRecv: isize = -8;
-use crate::deps::handleUnknownSyscall;
+use crate::ffi::handleUnknownSyscall;
 use sel4_common::structures::exception_t;
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_cspace::interface::CapTag;

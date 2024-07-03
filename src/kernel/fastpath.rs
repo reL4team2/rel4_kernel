@@ -1,7 +1,7 @@
 use crate::MASK;
 use crate::{
     config::seL4_MsgLengthBits,
-    deps::fastpath_restore,
+    ffi::fastpath_restore,
     syscall::{slowpath, SysCall, SysReplyRecv},
 };
 use core::intrinsics::{likely, unlikely};

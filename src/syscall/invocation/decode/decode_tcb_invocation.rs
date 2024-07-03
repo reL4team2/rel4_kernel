@@ -28,7 +28,7 @@ use crate::{
 use super::super::invoke_tcb::*;
 
 #[cfg(feature = "ENABLE_SMP")]
-use crate::deps::remoteTCBStall;
+use crate::ffi::remoteTCBStall;
 
 pub const CopyRegisters_suspendSource: usize = 0;
 pub const CopyRegisters_resumeTarget: usize = 1;

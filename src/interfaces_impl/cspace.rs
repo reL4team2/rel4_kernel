@@ -1,5 +1,5 @@
 use crate::config::CONFIG_MAX_NUM_WORK_UNITS_PER_PREEMPTION;
-use crate::deps::tcbDebugRemove;
+use crate::ffi::tcbDebugRemove;
 use crate::interrupt::{deletingIRQHandler, isIRQPending, setIRQState, IRQState};
 use crate::kernel::boot::current_lookup_fault;
 use crate::syscall::safe_unbind_notification;
@@ -125,7 +125,7 @@ pub fn finaliseCap(cap: &cap_t, _final: bool, _exposed: bool) -> finaliseCap_ret
                 let tcb = convert_to_mut_type_ref::<tcb_t>(cap.get_tcb_ptr());
                 #[cfg(feature = "ENABLE_SMP")]
                 unsafe {
-                    crate::deps::remoteTCBStall(tcb)
+                    crate::ffi::remoteTCBStall(tcb)
                 };
                 let cte_ptr = tcb.get_cspace_mut_ref(tcbCTable);
                 safe_unbind_notification(tcb);

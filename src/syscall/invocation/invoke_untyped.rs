@@ -1,4 +1,4 @@
-use crate::deps::tcbDebugAppend;
+use crate::ffi::tcbDebugAppend;
 use crate::syscall::{
     FREE_INDEX_TO_OFFSET, GET_FREE_INDEX, GET_OFFSET_FREE_PTR, OFFSET_TO_FREE_IDNEX,
 };

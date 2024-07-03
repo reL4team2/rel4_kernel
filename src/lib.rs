@@ -20,7 +20,6 @@ mod config;
 // mod console;
 mod arch;
 mod boot;
-mod ffi;
 mod interrupt;
 mod kernel;
 mod lang_items;
@@ -30,7 +29,7 @@ mod syscall;
 mod utils;
 
 mod compatibility;
-mod deps;
+mod ffi;
 mod interfaces_impl;
 
 pub use sel4_common::{plus_define_bitfield, BIT, IS_ALIGNED, MASK, ROUND_DOWN, ROUND_UP};

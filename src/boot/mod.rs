@@ -7,7 +7,7 @@ mod utils;
 use core::mem::size_of;
 
 use crate::arch::init_cpu;
-use crate::deps::{init_plat, tcbDebugAppend};
+use crate::ffi::{init_plat, tcbDebugAppend};
 use crate::{BIT, ROUND_UP};
 #[cfg(target_arch = "aarch64")]
 use aarch64_cpu::asm::barrier::{dsb, isb, SY};
@@ -35,7 +35,7 @@ use sel4_vspace::*;
 pub use utils::{provide_cap, write_slot};
 
 #[cfg(feature = "ENABLE_SMP")]
-use crate::deps::{clh_lock_acquire, clh_lock_init};
+use crate::ffi::{clh_lock_acquire, clh_lock_init};
 
 #[cfg(feature = "ENABLE_SMP")]
 use core::arch::asm;

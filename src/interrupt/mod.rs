@@ -11,7 +11,7 @@ use sel4_vspace::pptr_t;
 use crate::{arch::read_sip, config::*};
 
 #[cfg(feature = "ENABLE_SMP")]
-use crate::deps::{ipi_clear_irq, ipi_get_irq};
+use crate::ffi::{ipi_clear_irq, ipi_get_irq};
 
 #[no_mangle]
 pub static mut intStateIRQTable: [usize; maxIRQ + 1] = [0; maxIRQ + 1];
