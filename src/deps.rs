@@ -20,5 +20,5 @@ extern "C" {
     pub fn clh_is_self_in_queue() -> bool;
     pub fn clh_lock_release(cpu: usize);
     pub fn clh_lock_acquire(cpu_idx: usize, irq_path: bool);
-    
+
 }

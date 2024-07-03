@@ -1,7 +1,13 @@
+mod c_traps;
+mod exception;
+
 use core::arch::asm;
 
 use crate::config::RESET_CYCLES;
-use sel4_common::sbi::set_timer;
+pub use c_traps::restore_user_context;
+use sel4_common::arch::sbi::set_timer;
+
+core::arch::global_asm!(include_str!("restore_fp.S"));
 
 pub fn read_stval() -> usize {
     let temp: usize;

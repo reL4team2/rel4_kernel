@@ -11,7 +11,6 @@ pub enum exception_t {
     padding = isize::MAX - 1,
 }
 
-
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct seL4_IPCBuffer {

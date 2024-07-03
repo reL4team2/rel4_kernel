@@ -12,12 +12,9 @@ plus_define_bitfield! {
     }
 }
 
-
 impl seL4_CapRights_t {
     #[inline]
     pub fn from_word(word: usize) -> Self {
-        Self {
-            words: [word]
-        }
+        Self { words: [word] }
     }
 }

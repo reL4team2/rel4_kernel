@@ -3,7 +3,7 @@ use crate::plus_define_bitfield;
 
 #[derive(Eq, PartialEq, Debug, Clone, Copy, PartialOrd, Ord)]
 pub enum MessageLabel {
-    InvalidInvocation                       = 0,
+    InvalidInvocation = 0,
     UntypedRetype,
     TCBReadRegisters,
     TCBWriteRegisters,
@@ -60,9 +60,7 @@ plus_define_bitfield! {
 impl seL4_MessageInfo_t {
     #[inline]
     pub fn from_word(w: usize) -> Self {
-        Self {
-            words: [w]
-        }
+        Self { words: [w] }
     }
 
     #[inline]
@@ -81,8 +79,6 @@ impl seL4_MessageInfo_t {
 
     #[inline]
     pub fn get_label(&self) -> MessageLabel {
-        unsafe {
-            core::mem::transmute::<u8, MessageLabel>(self.get_usize_label() as u8)
-        }
+        unsafe { core::mem::transmute::<u8, MessageLabel>(self.get_usize_label() as u8) }
     }
 }
