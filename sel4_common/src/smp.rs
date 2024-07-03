@@ -26,6 +26,7 @@ pub fn hart_id_to_core_id(hart_id: usize) -> usize {
 
 #[inline]
 pub fn get_currenct_cpu_index() -> usize {
+    #[cfg(target_arch = "riscv64")]
     unsafe {
         let mut cur_sp: usize;
         asm!(
@@ -34,6 +35,15 @@ pub fn get_currenct_cpu_index() -> usize {
         );
         cur_sp -= kernel_stack_alloc as usize + 8;
         cur_sp >> CONFIG_KERNEL_STACK_BITS
+    }
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        let mut id: usize;
+        asm!(
+            "mrs {},tpidr_el1",
+            out(reg) id,
+        );
+        id & 0xfff
     }
 }
 

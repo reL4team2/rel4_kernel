@@ -1,7 +1,7 @@
 use super::structures::paddr_t;
 use riscv::register::satp;
 #[cfg(feature = "ENABLE_SMP")]
-use sel4_common::sbi::remote_sfence_vma;
+use sel4_common::arch::remote_sfence_vma;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

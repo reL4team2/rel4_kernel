@@ -23,7 +23,9 @@ members = [
 [dependencies]
 buddy_system_allocator = "0.6"
 riscv = { git = "https://gitee.com/rcore-os/riscv", features = ["inline-asm"] }
+aarch64-cpu = "9.4.0"
 log = "0.4"
+tock-registers = "0.8"
 spin = { version = "0.9", features = ["use_ticket_mutex"] }
 sel4_common = { path = "./sel4_common" }
 sel4_cspace = { path = "./sel4_cspace" }

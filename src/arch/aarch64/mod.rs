@@ -1,10 +1,13 @@
 mod c_traps;
 mod exception;
+mod ffi;
+mod platform;
 
-use core::arch::asm;
+pub mod arm_gic;
 
 use crate::config::RESET_CYCLES;
 pub use c_traps::restore_user_context;
+pub use platform::init_cpu;
 use sel4_common::arch::set_timer;
 
 pub fn read_stval() -> usize {
@@ -16,7 +19,7 @@ pub fn read_stval() -> usize {
     todo!("read_stval")
 }
 
-pub extern "C" fn write_stvec(val: usize) {
+pub extern "C" fn write_stvec(_val: usize) {
     // unsafe {
     //     asm!("csrw stvec , {}",in(reg) val);
     // }

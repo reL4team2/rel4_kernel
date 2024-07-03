@@ -6,11 +6,16 @@ mod utils;
 
 use core::mem::size_of;
 
+use crate::arch::init_cpu;
 use crate::deps::{init_plat, tcbDebugAppend};
 use crate::{BIT, ROUND_UP};
+#[cfg(target_arch = "aarch64")]
+use aarch64_cpu::asm::barrier::{dsb, isb, SY};
+#[cfg(target_arch = "aarch64")]
+use aarch64_cpu::registers::*;
 use log::debug;
-use riscv::register::stvec;
-use riscv::register::utvec::TrapMode;
+#[cfg(target_arch = "riscv64")]
+use riscv::register::{stvec, utvec::TrapMode};
 use sel4_common::sel4_config::{seL4_PageBits, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use spin::Mutex;
 
@@ -54,25 +59,6 @@ pub static mut ndks_boot: ndks_boot_t = ndks_boot_t {
     bi_frame: 0 as *mut seL4_BootInfo,
     slot_pos_cur: seL4_NumInitialCaps,
 };
-
-fn init_cpu() {
-    activate_kernel_vspace();
-    extern "C" {
-        fn trap_entry();
-    }
-    unsafe {
-        stvec::write(trap_entry as usize, TrapMode::Direct);
-    }
-    #[cfg(feature = "ENABLE_SMP")]
-    {
-        set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE) | BIT!(SIE_SSIE));
-    }
-    #[cfg(not(feature = "ENABLE_SMP"))]
-    {
-        set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE));
-    }
-    set_timer(get_time() + RESET_CYCLES);
-}
 
 fn calculate_extra_bi_size_bits(size: usize) -> usize {
     if size == 0 {
@@ -214,7 +200,13 @@ pub fn try_init_kernel(
     let bi_frame_vptr = ipcbuf_vptr + BIT!(PAGE_BITS);
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
     rust_map_kernel_window();
+    #[cfg(target_arch = "riscv64")]
     init_cpu();
+    #[cfg(target_arch = "aarch64")]
+    if init_cpu() == false {
+        debug!("ERROR: CPU init failed");
+        return false;
+    }
 
     unsafe {
         init_plat();

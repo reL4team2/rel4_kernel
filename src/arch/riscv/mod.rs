@@ -1,10 +1,12 @@
 mod c_traps;
 mod exception;
+mod platform;
 
+pub use c_traps::restore_user_context;
 use core::arch::asm;
+pub use platform::init_cpu;
 
 use crate::config::RESET_CYCLES;
-pub use c_traps::restore_user_context;
 use sel4_common::arch::sbi::set_timer;
 
 core::arch::global_asm!(include_str!("restore_fp.S"));

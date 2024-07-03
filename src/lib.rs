@@ -1,6 +1,8 @@
 #![no_std]
 #![crate_type = "staticlib"]
 #![feature(core_intrinsics)]
+#![feature(const_option)]
+#![feature(const_nonnull_new)]
 #![no_main]
 #![allow(dead_code)]
 #![allow(internal_features)]
@@ -18,6 +20,7 @@ mod config;
 // mod console;
 mod arch;
 mod boot;
+mod ffi;
 mod interrupt;
 mod kernel;
 mod lang_items;

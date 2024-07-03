@@ -1,5 +1,3 @@
-use core::arch::asm;
-
 use super::read_scause;
 use crate::{
     config::{
@@ -27,7 +25,7 @@ use sel4_common::utils::cpu_id;
 pub fn restore_user_context() {
     unsafe {
         // debug!("restore_user_context");
-        let cur_thread_reg: usize = get_currenct_thread().tcbArch.registers.as_ptr() as usize;
+        let _cur_thread_reg: usize = get_currenct_thread().tcbArch.registers.as_ptr() as usize;
         #[cfg(feature = "ENABLE_SMP")]
         {
             if clh_is_self_in_queue() {
@@ -89,7 +87,7 @@ pub fn restore_user_context() {
         // "ld  t1, (5*8)(t0) \n",
         // "ld  t0, (4*8)(t0) \n",
         // "sret");
-        panic!("unreachable")
+        // panic!("unreachable")
     }
 }
 

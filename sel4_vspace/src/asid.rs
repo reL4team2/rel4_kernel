@@ -1,3 +1,4 @@
+#[cfg(target_arch = "riscv64")]
 use core::arch::asm;
 use core::intrinsics::unlikely;
 
