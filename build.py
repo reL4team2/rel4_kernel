@@ -58,14 +58,15 @@ if __name__ == "__main__":
             clean_config()
             sys.exit(-1)
     else:
+        shell_command = "cargo build --release --target " + args.arch
+        
         if args.cpu_nums > 1:
-            if not exec_shell("cargo build --release --target " + args.arch + " --features ENABLE_SMP"):
-                clean_config()
-                sys.exit(-1)
-        else:
-            if not exec_shell("cargo build --release --target " + args.arch):
-                clean_config()
-                sys.exit(-1)
+            shell_command += " --features ENABLE_SMP"
+        if args.arch == "aarch64-unknown-linux-gnu":
+            shell_command += " --features PLAT_QEMU_ARM_VIRT"
+        if not exec_shell(shell_command):
+            clean_config()
+            sys.exit(-1)
     
     if args.cpu_nums > 1:
         shell_command = ""

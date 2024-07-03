@@ -1,6 +1,9 @@
 use sel4_task::tcb_t;
 
 extern "C" {
+	// in arm sel4,init timer have different realization on different platform
+	// so I think no need to realization them all
+	pub fn initTimer();
     pub fn init_plat();
     pub fn tcbDebugAppend(action: *mut tcb_t);
     pub fn tcbDebugRemove(tcb: *mut tcb_t);

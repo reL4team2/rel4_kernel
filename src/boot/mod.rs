@@ -6,12 +6,13 @@ mod utils;
 mod interface;
 #[cfg(target_arch = "aarch64")]
 mod fpu;
+
 #[cfg(target_arch = "aarch64")]
-mod gic_v2;
+mod user_access;
 
 use core::mem::size_of;
 
-use crate::deps::{tcbDebugAppend, init_plat};
+use crate::deps::{tcbDebugAppend, init_plat, initTimer};
 use crate::{BIT, ROUND_UP};
 use sel4_common::sel4_config::{seL4_PageBits, CONFIG_KERNEL_STACK_BITS, CURRENT_CPU_INDEX, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use log::debug;
@@ -24,6 +25,8 @@ use riscv::register::{stvec,utvec::TrapMode};
 use aarch64_cpu::registers::*;
 #[cfg(target_arch = "aarch64")]
 use aarch64_cpu::asm::barrier::{dsb,isb,SY};
+#[cfg(target_arch = "aarch64")]
+use crate::arm_gic::gic_v2;
 
 use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
@@ -107,8 +110,8 @@ fn init_cpu() -> bool {
 		// #endif
 	}
 	// Setup kernel stack pointer.
-	let mut stack_top:usize = kernel_stack_alloc[CURRENT_CPU_INDEX] + 1<<CONFIG_KERNEL_STACK_BITS;
-	stack_top |= cpu_id();	//the judge of enable smp have done in cpu_id
+	let mut stack_top:u64 = (kernel_stack_alloc as *mut u8).wrapping_add(CURRENT_CPU_INDEX).wrapping_add(1<<CONFIG_KERNEL_STACK_BITS) as u64;
+	stack_top |= cpu_id() as u64;	//the judge of enable smp have done in cpu_id
 	#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
 	{
 		// TODO
@@ -155,11 +158,11 @@ fn init_cpu() -> bool {
 		}
 	}
 	// initLocalIRQController
-	gic_v2::cpu_iface_init();
+	gic_v2::gic_v2::cpu_initLocalIRQController();
 	// armv_init_user_access
-
+	user_access::armv_init_user_access();
 	//initTimer
-
+	initTimer();
 	true
 }
 
