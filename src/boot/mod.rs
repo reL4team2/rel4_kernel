@@ -62,108 +62,101 @@ pub static mut ndks_boot: ndks_boot_t = ndks_boot_t {
     slot_pos_cur: seL4_NumInitialCaps,
 };
 
-
+#[cfg(target_arch = "riscv64")]
 fn init_cpu() {
-	let haveHWFPU:bool;
     activate_kernel_vspace();
-	#[cfg(target_arch = "aarch64")]
-	{
-		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
-		{
-			// TODO
-			// copied from C sel4, no arm hypervisor, so no change
-			// if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {
-			//     vcpu_boot_init();
-			// }
-		}
-		#[cfg(feature = "HARDWARE_DEBUG_API")]
-		{
-			// TODO
-			// copied from C sel4, no arm hypervisor, so no change
-			// #ifdef CONFIG_HARDWARE_DEBUG_API
-			//     if (!Arch_initHardwareBreakpoints()) {
-			//         printf("Kernel built with CONFIG_HARDWARE_DEBUG_API, but this board doesn't "
-			//                "reliably support it.\n");
-			//         return false;
-			//     }
-			// #endif
-		}
+	extern "C" {
+		fn trap_entry();
 	}
-	
-	#[cfg(target_arch = "riscv64")]
-	{
-		extern "C" {
-			fn trap_entry();
-		}
-		unsafe {
-			stvec::write(trap_entry as usize, TrapMode::Direct);
-		}
+	unsafe {
+		stvec::write(trap_entry as usize, TrapMode::Direct);
 	}
-	#[cfg(target_arch = "aarch64")]
+	#[cfg(feature = "ENABLE_SMP")] {
+		set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE) | BIT!(SIE_SSIE));
+	}
+	#[cfg(not(feature = "ENABLE_SMP"))] {
+		set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE));
+	}	
+    set_timer(get_time() + RESET_CYCLES);
+}
+
+#[cfg(target_arch = "aarch64")]
+fn init_cpu() -> bool {
+	#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
 	{
-		// Setup kernel stack pointer.
-		let mut stack_top:usize = kernel_stack_alloc[CURRENT_CPU_INDEX] + 1<<CONFIG_KERNEL_STACK_BITS;
-		stack_top |= cpu_id();	//the judge of enable smp have done in cpu_id
-		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
-		{
-			// TODO
-		}
+		// TODO
+		// copied from C sel4, no arm hypervisor, so no change
+		// if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {
+		//     vcpu_boot_init();
+		// }
+	}
+	#[cfg(feature = "HARDWARE_DEBUG_API")]
+	{
+		// TODO
+		// copied from C sel4, no arm hypervisor, so no change
+		// #ifdef CONFIG_HARDWARE_DEBUG_API
+		//     if (!Arch_initHardwareBreakpoints()) {
+		//         printf("Kernel built with CONFIG_HARDWARE_DEBUG_API, but this board doesn't "
+		//                "reliably support it.\n");
+		//         return false;
+		//     }
+		// #endif
+	}
+	// Setup kernel stack pointer.
+	let mut stack_top:usize = kernel_stack_alloc[CURRENT_CPU_INDEX] + 1<<CONFIG_KERNEL_STACK_BITS;
+	stack_top |= cpu_id();	//the judge of enable smp have done in cpu_id
+	#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+	{
+		// TODO
+	}
+	#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
+	{
+		TPIDR_EL1::write(stack_address)
+	}
+	// CPU's exception vector table
+	extern "C" {
+		fn arm_vector_table();
+	}
+	unsafe {
+		dsb(SY);
 		#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
 		{
-			TPIDR_EL1::write(stack_address)
+			VBAR_EL1::write(arm_vector_table as usize);
 		}
+		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+		{
+			// TODO: the rcore-os/aarh64 module have no vbar_el2
+			// VBAR_EL2::write(arm_vector_table as usize);
+		}
+		isb();
 	}
-
-	#[cfg(target_arch = "aarch64")]
+	// disable fpu
+	let mut haveHWFPU:bool;
+	// detect have fpu
+	haveHWFPU = fpu::fpsimd_HWCapTest();
+	if haveHWFPU {
+		fpu::disableFpu();
+	}
+	#[cfg(feature = "HAVE_FPU")]
 	{
-		// CPU's exception vector table
-		extern "C" {
-			fn arm_vector_table();
-		}
-		unsafe {
-			dsb(SY);
-			#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
-			{
-				VBAR_EL1::write(arm_vector_table as usize);
+		if haveHWFPU {
+			let res = fpu::fpsimd_init();
+			if res == false{
+				return false;
 			}
-			#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
-			{
-				// TODO: the rcore-os/aarh64 module have no vbar_el2
-				// VBAR_EL2::write(arm_vector_table as usize);
-			}
-			isb();
+		}
+		else{
+			debug!("ERROR:Platform claims to have FP hardware, but does not!");
+			return false;
 		}
 	}
+	// initLocalIRQController
 
-	#[cfg(target_arch = "aarch64")]
-	{
-		// disable fpu
+	// armv_init_user_access
 
-	}
+	//initTimer
 
-	#[cfg(target_arch = "riscv64")]
-    {
-		#[cfg(feature = "ENABLE_SMP")] {
-			set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE) | BIT!(SIE_SSIE));
-		}
-		#[cfg(not(feature = "ENABLE_SMP"))] {
-			set_sie_mask(BIT!(SIE_SEIE) | BIT!(SIE_STIE));
-		}
-	}
-	#[cfg(target_arch = "aarch64")]
-	{
-		// initLocalIRQController
-	}
-	#[cfg(target_arch = "aarch64")]
-	{
-		// armv_init_user_access
-	}
-	#[cfg(target_arch = "riscv64")]
-    set_timer(get_time() + RESET_CYCLES);
-	#[cfg(target_arch = "aarch64")]
-	{
-		//initTimer
-	}
+	true
 }
 
 fn calculate_extra_bi_size_bits(size: usize) -> usize {
@@ -302,7 +295,13 @@ pub fn try_init_kernel(
     let bi_frame_vptr = ipcbuf_vptr + BIT!(PAGE_BITS);
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
     rust_map_kernel_window();
+	#[cfg(target_arch = "riscv")]
     init_cpu();
+	#[cfg(target_arch = "riscv")]
+	if init_cpu() == false {
+		debug!("ERROR: CPU init failed");
+		return false;
+	}
 
     unsafe {
         init_plat();
