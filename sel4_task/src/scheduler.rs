@@ -3,10 +3,11 @@ use crate::deps::{doMaskReschedule, kernel_stack_alloc, ksIdleThreadTCB};
 use core::arch::asm;
 use core::intrinsics::{likely, unlikely};
 use sel4_common::registers::{sp, FaultIP, NextIP, SSTATUS, SSTATUS_SPIE, SSTATUS_SPP};
+#[cfg(feature = "ENABLE_SMP")]
+use sel4_common::sel4_config::{seL4_TCBBits, CONFIG_MAX_NUM_NODES};
 use sel4_common::sel4_config::{
-    seL4_TCBBits, wordBits, wordRadix, CONFIG_KERNEL_STACK_BITS, CONFIG_MAX_NUM_NODES,
-    CONFIG_NUM_DOMAINS, CONFIG_NUM_PRIORITIES, CONFIG_TIME_SLICE, L2_BITMAP_SIZE, NUM_READY_QUEUES,
-    TCB_OFFSET,
+    wordBits, wordRadix, CONFIG_KERNEL_STACK_BITS, CONFIG_NUM_DOMAINS, CONFIG_NUM_PRIORITIES,
+    CONFIG_TIME_SLICE, L2_BITMAP_SIZE, NUM_READY_QUEUES, TCB_OFFSET,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
 use sel4_common::{BIT, MASK};
@@ -94,6 +95,7 @@ pub static mut ksDomSchedule: [dschedule_t; ksDomScheduleLength] = [dschedule_t 
     length: 60,
 }; ksDomScheduleLength];
 
+#[allow(non_camel_case_types)]
 type prio_t = usize;
 
 #[inline]
@@ -409,12 +411,10 @@ pub fn schedule() {
         }
     }
     set_ks_scheduler_action(SchedulerAction_ResumeCurrentThread);
+    #[cfg(feature = "ENABLE_SMP")]
     unsafe {
-        #[cfg(feature = "ENABLE_SMP")]
-        {
-            doMaskReschedule(ksSMP[cpu_id()].ipiReschedulePending);
-            ksSMP[cpu_id()].ipiReschedulePending = 0;
-        }
+        doMaskReschedule(ksSMP[cpu_id()].ipiReschedulePending);
+        ksSMP[cpu_id()].ipiReschedulePending = 0;
     }
 }
 

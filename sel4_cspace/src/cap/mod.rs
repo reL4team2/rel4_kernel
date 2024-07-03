@@ -45,8 +45,8 @@ pub enum CapTag {
     CapASIDPoolCap = 13,
 }
 
-/// cap_t 表示一个capability，由两个机器字组成，包含了类型、对象元数据以及指向内核对象的指针。
-/// 每个类型的capability的每个字段都实现了get和set方法。
+// cap_t 表示一个capability，由两个机器字组成，包含了类型、对象元数据以及指向内核对象的指针。
+// 每个类型的capability的每个字段都实现了get和set方法。
 plus_define_bitfield! {
     cap_t, 2, 0, 59, 5 => {
         new_null_cap, CapTag::CapNullCap as usize => {},

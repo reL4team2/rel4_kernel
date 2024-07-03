@@ -6,10 +6,11 @@ use sel4_common::structures::exception_t;
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_type_ref};
 use sel4_common::MASK;
 
-use super::asid::{asid_t, find_vspace_for_asid};
-use super::utils::{paddr_to_pptr, RISCV_GET_PT_INDEX};
-use super::vm_rights::{RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights};
-use super::{satp::sfence, structures::vptr_t};
+use super::satp::sfence;
+use crate::asid::{asid_t, find_vspace_for_asid};
+use crate::structures::vptr_t;
+use crate::utils::{paddr_to_pptr, RISCV_GET_PT_INDEX};
+use crate::vm_rights::{RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights};
 
 #[repr(C)]
 #[derive(Copy, Clone)]

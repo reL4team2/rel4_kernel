@@ -2,7 +2,8 @@
 use core::arch::asm;
 use core::intrinsics::unlikely;
 
-use super::{interface::set_vm_root, pte::pte_t};
+use super::interface::set_vm_root;
+use crate::arch::pte_t;
 use crate::structures::pptr_t;
 use sel4_common::{
     fault::*, sel4_config::*, structures::exception_t, utils::convert_to_option_mut_type_ref, BIT,
@@ -37,6 +38,7 @@ impl asid_pool_t {
     }
 }
 
+#[allow(non_camel_case_types)]
 pub type asid_t = usize;
 
 #[repr(C)]

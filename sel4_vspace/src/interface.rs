@@ -1,8 +1,8 @@
 // use crate::{common::{sel4_config::*, structures::exception_t, utils::{convert_to_mut_type_ref, pageBitsForSize}, fault::*}, BIT, ROUND_DOWN};
-use super::pte::pte_t;
 use super::utils::{
     kpptr_to_paddr, RISCV_GET_LVL_PGSIZE, RISCV_GET_LVL_PGSIZE_BITS, RISCV_GET_PT_INDEX,
 };
+use crate::arch::pte_t;
 use core::intrinsics::unlikely;
 use sel4_common::fault::lookup_fault_t;
 use sel4_common::sel4_config::{
@@ -14,9 +14,11 @@ use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::{BIT, ROUND_DOWN};
 use sel4_cspace::interface::{cap_t, CapTag};
 
+#[cfg(target_arch = "riscv64")]
+use crate::arch::satp::{setVSpaceRoot, sfence};
+
 use super::{
     asid::{asid_t, find_vspace_for_asid},
-    satp::{setVSpaceRoot, sfence},
     structures::{pptr_t, vptr_t},
     utils::pptr_to_paddr,
 };

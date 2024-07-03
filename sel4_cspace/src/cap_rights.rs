@@ -1,6 +1,5 @@
 use sel4_common::plus_define_bitfield;
 
-const seL4_CapRightsBits: usize = 4;
 plus_define_bitfield! {
     seL4_CapRights_t, 1, 0, 0, 0 => {
         new, 0 => {

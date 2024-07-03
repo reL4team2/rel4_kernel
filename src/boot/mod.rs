@@ -14,8 +14,6 @@ use aarch64_cpu::asm::barrier::{dsb, isb, SY};
 #[cfg(target_arch = "aarch64")]
 use aarch64_cpu::registers::*;
 use log::debug;
-#[cfg(target_arch = "riscv64")]
-use riscv::register::{stvec, utvec::TrapMode};
 use sel4_common::sel4_config::{seL4_PageBits, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use spin::Mutex;
 
@@ -24,12 +22,10 @@ use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 use crate::boot::utils::paddr_to_pptr_reg;
 use crate::config::*;
-use crate::interrupt::set_sie_mask;
 use crate::structures::{
     ndks_boot_t, p_region_t, region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion,
     v_region_t,
 };
-use sel4_common::arch::{get_time, set_timer};
 
 pub use root_server::rootserver;
 use sel4_task::*;

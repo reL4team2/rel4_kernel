@@ -12,7 +12,6 @@ use sel4_common::{
     sel4_config::*,
     utils::{convert_to_mut_type_ref, convert_to_option_mut_type_ref},
 };
-use sel4_cspace::compatibility::*;
 use sel4_cspace::interface::*;
 use sel4_ipc::*;
 use sel4_task::*;
