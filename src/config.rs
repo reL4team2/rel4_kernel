@@ -22,6 +22,7 @@ pub const RISCVPageBits: usize = 12;
 pub const RISCVMegaPageBits: usize = 21;
 pub const RISCVGigaPageBits: usize = 30;
 pub const KERNEL_STACK_ALIGNMENT: usize = 4096;
+pub const CPUID_MASK: usize = KERNEL_STACK_ALIGNMENT - 1;
 pub const tcbCNodeEntries: usize = 5;
 
 //FIXME:this constant is generated , maybe need to transfer from C code

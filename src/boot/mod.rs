@@ -9,12 +9,14 @@ use core::mem::size_of;
 
 use crate::deps::{tcbDebugAppend, init_plat};
 use crate::{BIT, ROUND_UP};
-use sel4_common::sel4_config::{PADDR_TOP, KERNEL_ELF_BASE, seL4_PageBits, PAGE_BITS};
+use sel4_common::sel4_config::{seL4_PageBits, CONFIG_KERNEL_STACK_BITS, CURRENT_CPU_INDEX, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use log::debug;
+use sel4_common::utils::cpu_id;
 use spin::Mutex;
-use riscv::register::stvec;
-use riscv::register::utvec::TrapMode;
-
+#[cfg(target_arch = "riscv")]
+use riscv::register::{stvec,utvec::TrapMode};
+#[cfg(target_arch = "riscv")]
+use aarch64::set_kernel_stack;
 
 use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
@@ -59,16 +61,30 @@ pub static mut ndks_boot: ndks_boot_t = ndks_boot_t {
 fn init_cpu() {
 	let haveHWFPU:bool;
     activate_kernel_vspace();
-	// if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {	// copied from C sel4, no arm hypervisor, so no change
-    //     vcpu_boot_init();
-    // }
-	// #ifdef CONFIG_HARDWARE_DEBUG_API
-	//     if (!Arch_initHardwareBreakpoints()) {
-	//         printf("Kernel built with CONFIG_HARDWARE_DEBUG_API, but this board doesn't "
-	//                "reliably support it.\n");
-	//         return false;
-	//     }
-	// #endif
+	#[cfg(target_arch = "aarch64")]
+	{
+		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+		{
+			// TODO
+			// copied from C sel4, no arm hypervisor, so no change
+			// if (config_set(CONFIG_ARM_HYPERVISOR_SUPPORT)) {
+			//     vcpu_boot_init();
+			// }
+		}
+		#[cfg(feature = "HARDWARE_DEBUG_API")]
+		{
+			// TODO
+			// copied from C sel4, no arm hypervisor, so no change
+			// #ifdef CONFIG_HARDWARE_DEBUG_API
+			//     if (!Arch_initHardwareBreakpoints()) {
+			//         printf("Kernel built with CONFIG_HARDWARE_DEBUG_API, but this board doesn't "
+			//                "reliably support it.\n");
+			//         return false;
+			//     }
+			// #endif
+		}
+	}
+	
 	#[cfg(target_arch = "riscv64")]
 	{
 		extern "C" {
@@ -81,11 +97,15 @@ fn init_cpu() {
 	#[cfg(target_arch = "aarch64")]
 	{
 		// Setup kernel stack pointer.
+		let mut stack_top:usize = kernel_stack_alloc[CURRENT_CPU_INDEX] + 1<<CONFIG_KERNEL_STACK_BITS;
+		stack_top |= cpu_id();	//the judge of enable smp have done in cpu_id
+		set_kernel_stack(stack_top);
 	}
 
 	#[cfg(target_arch = "aarch64")]
 	{
 		// CPU's exception vector table
+		
 	}
 
 	#[cfg(target_arch = "aarch64")]

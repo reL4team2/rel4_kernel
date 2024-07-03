@@ -10,3 +10,4 @@ spin = { version = "0.9", features = ["use_ticket_mutex"] }
 
 [features]
 ENABLE_SMP = []
+ARM_HYPERVISOR_SUPPORT = []

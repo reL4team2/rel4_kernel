@@ -1,7 +1,7 @@
 use core::arch::asm;
 use crate::BIT;
 use crate::deps::{coreMap, kernel_stack_alloc};
-use super::sel4_config::{CONFIG_MAX_NUM_NODES, CONFIG_KERNEL_STACK_BITS};
+use super::sel4_config::{CONFIG_MAX_NUM_NODES, CONFIG_KERNEL_STACK_BITS, CPUID_MASK};
 
 
 #[inline]
@@ -30,6 +30,7 @@ pub fn hart_id_to_core_id(hart_id: usize) -> usize {
 
 #[inline]
 pub fn get_currenct_cpu_index() -> usize {
+	#[cfg(target_arch = "riscv64")]
     unsafe {
         let mut cur_sp: usize;
         asm!(
@@ -39,6 +40,25 @@ pub fn get_currenct_cpu_index() -> usize {
         cur_sp -= kernel_stack_alloc as usize + 8;
         cur_sp >> CONFIG_KERNEL_STACK_BITS
     }
+	#[cfg(target_arch = "aarch64")]
+	unsafe {
+		let mut id: usize;
+		#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
+		{
+			asm!(
+				"mrs {},tpidr_el1",
+				out(reg) id,
+			);
+		}
+		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+		{
+			asm!(
+				"mrs {},tpidr_el2",
+				out(reg) id,
+			);
+		}
+		id & CPUID_MASK
+	}
 }
 
 #[inline]

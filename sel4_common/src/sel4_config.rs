@@ -103,3 +103,6 @@ pub const CONFIG_RESET_CHUNK_BITS: usize = 8;
 
 pub const CONFIG_KERNEL_STACK_BITS: usize = 12;
 
+// aarch64 porting TODO
+
+pub const CURRENT_CPU_INDEX: usize = 0;

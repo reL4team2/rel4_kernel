@@ -22,6 +22,8 @@ sel4_task = { path = "./sel4_task" }
 sel4_ipc = { path = "./sel4_ipc" }
 [features]
 ENABLE_SMP = ["sel4_common/ENABLE_SMP", "sel4_task/ENABLE_SMP", "sel4_vspace/ENABLE_SMP"]
+ARM_HYPERVISOR_SUPPORT = ["sel4_common/ARM_HYPERVISOR_SUPPORT"]
+HARDWARE_DEBUG_API = []
 
 [profile.release]
 lto = true

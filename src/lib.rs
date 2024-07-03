@@ -22,7 +22,10 @@ mod utils;
 mod kernel;
 mod structures;
 mod object;
+#[cfg(target_arch = "riscv64")]
 mod riscv;
+#[cfg(target_arch = "aarch64")]
+mod aarch64;
 mod syscall;
 mod boot;
 mod interrupt;
