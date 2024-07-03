@@ -4,6 +4,7 @@ mod root_server;
 mod untyped;
 mod utils;
 mod interface;
+mod fpu;
 
 use core::mem::size_of;
 
@@ -15,8 +16,12 @@ use sel4_common::utils::cpu_id;
 use spin::Mutex;
 #[cfg(target_arch = "riscv")]
 use riscv::register::{stvec,utvec::TrapMode};
-#[cfg(target_arch = "riscv")]
-use aarch64::set_kernel_stack;
+#[cfg(target_arch = "aarch64")]
+use aarch64::regs::{TPIDR_EL1,VBAR_EL1};
+#[cfg(target_arch = "aarch64")]
+use aarch64::barrier::{dsb, isb};
+#[cfg(target_arch = "aarch64")]
+use aarch64::cache::SY;
 
 use crate::boot::mm::init_freemem;
 use crate::boot::root_server::root_server_init;
@@ -99,18 +104,41 @@ fn init_cpu() {
 		// Setup kernel stack pointer.
 		let mut stack_top:usize = kernel_stack_alloc[CURRENT_CPU_INDEX] + 1<<CONFIG_KERNEL_STACK_BITS;
 		stack_top |= cpu_id();	//the judge of enable smp have done in cpu_id
-		set_kernel_stack(stack_top);
+		#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+		{
+			// TODO
+		}
+		#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
+		{
+			TPIDR_EL1::write(stack_address)
+		}
 	}
 
 	#[cfg(target_arch = "aarch64")]
 	{
 		// CPU's exception vector table
-		
+		extern "C" {
+			fn arm_vector_table();
+		}
+		unsafe {
+			dsb(SY);
+			#[cfg(not(feature = "ARM_HYPERVISOR_SUPPORT"))]
+			{
+				VBAR_EL1::write(arm_vector_table as usize);
+			}
+			#[cfg(feature = "ARM_HYPERVISOR_SUPPORT")]
+			{
+				// TODO: the rcore-os/aarh64 module have no vbar_el2
+				// VBAR_EL2::write(arm_vector_table as usize);
+			}
+			isb();
+		}
 	}
 
 	#[cfg(target_arch = "aarch64")]
 	{
 		// disable fpu
+
 	}
 
 	#[cfg(target_arch = "riscv64")]
