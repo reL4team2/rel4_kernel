@@ -6,10 +6,17 @@ use sel4_common::{
 };
 
 use crate::pte_t;
-
+pub const KPT_LEVELS: usize = 4;
+pub const seL4_VSpaceIndexBits: usize = 9;
 #[inline]
 pub fn GET_KPT_INDEX(addr: usize, n: usize) -> usize {
-    ((addr) >> (((PT_INDEX_BITS) * (((CONFIG_PT_LEVELS) - 1) - (n))) + seL4_PageBits))
+    ((addr) >> (((PT_INDEX_BITS) * (((KPT_LEVELS) - 1) - (n))) + seL4_PageBits))
+        & MASK!(PT_INDEX_BITS)
+}
+
+#[inline]
+pub fn GET_UPT_INDEX(addr: usize, n: usize) -> usize {
+    ((addr) >> (((PT_INDEX_BITS) * (((KPT_LEVELS) - 1) - (n))) + seL4_PageBits))
         & MASK!(PT_INDEX_BITS)
 }
 

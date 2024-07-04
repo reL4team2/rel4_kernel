@@ -1,7 +1,13 @@
-use crate::{pte_t, vm_attributes_t};
-use sel4_common::{sel4_config::seL4_PageTableBits, utils::convert_to_mut_type_ref, BIT};
+use core::intrinsics::unlikely;
 
-use super::utils::paddr_to_pptr;
+use crate::{
+    arch::aarch64::machine::{clean_by_va_pou, invalidate_local_tlb_asid}, asid_t, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t, vptr_t
+};
+use sel4_common::{
+    sel4_config::seL4_PageTableBits, structures::exception_t, utils::convert_to_mut_type_ref, BIT,
+};
+
+use super::utils::{paddr_to_pptr, GET_UPT_INDEX};
 
 enum vm_page_size {
     ARMSmallPage,
@@ -16,6 +22,7 @@ enum pte_tag {
     pte_pte_invalid = 0,
 }
 
+pub const UPT_LEVELS: usize = 4;
 bitflags::bitflags! {
     /// Possible flags for a page table entry.
     pub struct PTEFlags: usize {
@@ -99,6 +106,14 @@ impl pte_t {
         (self.get_type() != pte_tag::pte_pte_invalid as usize) as usize
     }
 
+    pub fn pte_table_get_present(&self) -> bool {
+        self.get_type() != pte_tag::pte_pte_table as usize
+    }
+
+    pub fn new_invalid() -> Self {
+        Self::new(0, PTEFlags::EMPTY)
+    }
+
     pub fn makeUserPTE(
         paddr: usize,
         rights: usize,
@@ -119,5 +134,33 @@ impl pte_t {
         } else {
             pte_t::new(paddr, flags)
         }
+    }
+
+    pub fn unmap_page_table(&mut self, asid: asid_t, vptr: vptr_t) {
+        let target_pt = self as *mut pte_t;
+        let find_ret = find_vspace_for_asid(asid);
+        if unlikely(find_ret.status != exception_t::EXCEPTION_NONE) {
+            return;
+        }
+        let mut pt = find_ret.vspace_root.unwrap();
+        let mut ptSlot = unsafe { &mut *(pt.add(GET_UPT_INDEX(vptr, 0))) };
+        assert_ne!(find_ret.vspace_root.unwrap(), target_pt);
+        for i in 0..UPT_LEVELS - 1 {
+            if pt == target_pt {
+                break;
+            }
+            ptSlot = unsafe { &mut *(pt.add(GET_UPT_INDEX(vptr, i))) };
+            if unlikely(ptSlot.pte_table_get_present()) {
+                return;
+            }
+        }
+
+        if pt != target_pt {
+            /* didn't find it */
+            return;
+        }
+        *ptSlot = pte_t::new_invalid();
+        invalidate_local_tlb_asid(asid);
+        clean_by_va_pou(ptSlot as usize, pptr_to_paddr(ptSlot))
     }
 }

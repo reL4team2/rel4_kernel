@@ -45,11 +45,12 @@ fn rust_map_kernel_window() {
 
     let mut idx = GET_KPT_INDEX(PPTR_BASE, 1);
     while idx < GET_KPT_INDEX(PPTR_TOP, 1) {
-        unsafe {
-            armKSGlobalKernelPUD[idx] = pte_pte_table_new(kpptr_to_paddr(
-                armKSGlobalKernelPDs[idx][0].0.as_ptr() as usize,
-            ));
-        }
+        todo!();
+        // unsafe {
+        //     armKSGlobalKernelPUD[idx] = pte_pte_table_new(kpptr_to_paddr(
+        //         armKSGlobalKernelPDs[idx][0].0.as_ptr() as usize,
+        //     ));
+        // }
         idx += 1;
     }
 
@@ -66,10 +67,11 @@ fn rust_map_kernel_window() {
     }
 
     unsafe {
-        armKSGlobalKernelPUD[GET_KPT_INDEX(PPTR_TOP, 1)] = pte_t::pte_next_table(
-            kpptr_to_paddr(armKSGlobalKernelPDs[BIT!(PT_INDEX_BITS) - 1][0].0.as_ptr() as usize),
-            true,
-        );
+        todo!()
+        // armKSGlobalKernelPUD[GET_KPT_INDEX(PPTR_TOP, 1)] = pte_t::pte_next_table(
+        //     kpptr_to_paddr(armKSGlobalKernelPDs[BIT!(PT_INDEX_BITS) - 1][0].0.as_ptr() as usize),
+        //     true,
+        // );
     }
 
     //FIXME:: map_kernel_window not implemented;
