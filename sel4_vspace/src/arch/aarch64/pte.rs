@@ -95,8 +95,7 @@ impl pte_t {
     pub fn is_pte_table(&self) -> bool {
         self.get_type() != pte_tag::pte_pte_table as usize
     }
-
-    pub fn is_valid(&self) -> usize {
+    pub fn get_valid(&self) -> usize {
         (self.get_type() != pte_tag::pte_pte_invalid as usize) as usize
     }
 

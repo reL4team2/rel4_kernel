@@ -37,7 +37,7 @@ pub fn unmapPage(
 
     let slot = unsafe { &(*lu_ret.ptSlot) };
 
-    if slot.get_vaild() == 0
+    if slot.get_valid() == 0
         || slot.is_pte_table()
         || slot.get_ppn() << seL4_PageBits != pptr_to_paddr(pptr)
     {

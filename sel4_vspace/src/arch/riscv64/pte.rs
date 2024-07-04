@@ -128,7 +128,7 @@ impl pte_t {
     ///判断是页目录节点还是叶子节点，当`valid`置1，`read``write``exec`置0时，代表为叶子节点
     #[inline]
     pub fn is_pte_table(&self) -> bool {
-        self.get_vaild() != 0
+        self.get_valid() != 0
             && !(self.get_read() != 0 || self.get_write() != 0 || self.get_execute() != 0)
     }
 
@@ -143,7 +143,7 @@ impl pte_t {
     }
 
     #[inline]
-    pub fn get_vaild(&self) -> usize {
+    pub fn get_valid(&self) -> usize {
         (self.0 & 0x1) >> 0
     }
 
