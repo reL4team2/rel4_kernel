@@ -3,8 +3,8 @@ pub mod syscall_reply;
 pub mod utils;
 
 use core::intrinsics::unlikely;
-use sel4_common::fault::{lookup_fault_t, seL4_Fault_t, FaultType};
 use sel4_common::arch::capRegister;
+use sel4_common::fault::{lookup_fault_t, seL4_Fault_t, FaultType};
 use sel4_common::sel4_config::tcbCaller;
 
 pub const SysCall: isize = -1;

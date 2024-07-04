@@ -186,10 +186,11 @@ pub fn try_init_kernel(
         end: kpptr_to_paddr(ki_boot_end as usize),
     };
     let boot_mem_reuse_reg = paddr_to_pptr_reg(&boot_mem_reuse_p_reg);
-    let ui_reg = paddr_to_pptr_reg(&p_region_t {
+    let ui_p_reg = p_region_t {
         start: ui_p_reg_start,
         end: ui_p_reg_end,
-    });
+    };
+    let ui_reg = paddr_to_pptr_reg(&ui_p_reg);
 
     let mut extra_bi_size = 0;
     let ui_v_reg = v_region_t {
@@ -232,6 +233,12 @@ pub fn try_init_kernel(
         );
         return false;
     }
+    #[cfg(target_arch = "aarch64")]
+    if !init_freemem(ui_p_reg.clone(), dtb_p_reg.unwrap().clone()) {
+        debug!("ERROR: free memory management initialization failed\n");
+        return false;
+    }
+    #[cfg(target_arch = "riscv64")]
     if !init_freemem(ui_reg.clone(), dtb_p_reg.unwrap().clone()) {
         debug!("ERROR: free memory management initialization failed\n");
         return false;

@@ -1,7 +1,7 @@
 use aarch64_cpu::registers::Writeable;
 use aarch64_cpu::registers::{TPIDR_EL1, VBAR_EL1};
 use core::arch::asm;
-use sel4_common::sel4_config::CONFIG_KERNEL_STACK_BITS;
+use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS, PADDR_TOP};
 use sel4_common::utils::cpu_id;
 
 use super::ffi::*;
@@ -46,7 +46,7 @@ pub fn init_cpu() -> bool {
     }
     true
 }
-pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
+pub fn init_freemem(ui_p_reg: p_region_t, dtb_p_reg: p_region_t) -> bool {
     extern "C" {
         fn ki_end();
     }
@@ -71,15 +71,19 @@ pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
     // here use the MODE_RESERVED:ARRAY_SIZE(mode_reserved_region) to judge
     // but in aarch64, the array size is always 0
     // so eliminate some code
-    if ui_reg.start < PADDR_TOP {
-        if (index >= NUM_RESERVED_REGIONS) {
+    if ui_p_reg.start < PADDR_TOP {
+        if index >= NUM_RESERVED_REGIONS {
             debug!("ERROR: no slot to add the user image to the reserved regions");
             return false;
         }
-        res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
-        index += 1;
+        unsafe {
+            res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
+            index += 1;
+        }
     } else {
-        reserve_region(ui_p_reg);
+        unsafe {
+            reserve_region(ui_p_reg);
+        }
     }
 
     unsafe { rust_init_freemem(avail_p_regs_size, avail_p_regs_addr, index, res_reg.clone()) }
@@ -96,7 +100,7 @@ pub fn cleanInvalidateL1Caches() {
 pub fn invalidateLocalTLB() {
     unsafe {
         asm!("dsb sy;"); // DSB SY
-        asm!("mcr p15, 0, $0, c8, c7, 0" : : "r"(0) : "memory");
+        asm!("tlbi vmalle1;");
         asm!("dsb sy;"); // DSB SY
         asm!("isb;"); // ISB SY
     }
@@ -114,17 +118,19 @@ fn cleanInvalidate_D_PoC() {
 fn cleanInvalidate_D_by_level(level: usize) {
     let lsize = readCacheSize(level);
     let lbits = (lsize & (1 << 3 - 1)) + 4;
-	let assoc = ((lsize >>3) & (1<<10-1))+1;
-	let assoc_bits = wordBits - leading_zeros(assoc -1);
-	let nsets =( (lsize>>13) & (1<<15 -1))+1;
+    let assoc = ((lsize >> 3) & (1 << 10 - 1)) + 1;
+    let assoc_bits = wordBits - (assoc - 1).leading_zeros() as usize;
+    let nsets = ((lsize >> 13) & (1 << 15 - 1)) + 1;
 
     for w in 0..assoc {
         for s in 0..nsets {
-			let wsl=(w << (32 - assoc_bits)) | (s << lbits) | (l << 1);
-            asm!(
-				"dc cisw, {}",
-				in(reg) wsl,
-			)
+            let wsl = (w << (32 - assoc_bits)) | (s << lbits) | (level << 1);
+            unsafe {
+                asm!(
+                    "dc cisw, {}",
+                    in(reg) wsl,
+                )
+            }
         }
     }
 }

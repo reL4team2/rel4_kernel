@@ -1,11 +1,11 @@
 use core::intrinsics::{likely, unlikely};
 
-use sel4_common::fault::*;
-use sel4_common::message_info::seL4_MessageInfo_t;
 use sel4_common::arch::{
     fault_messages, msgInfoRegister, msgRegister, n_contextRegisters, n_exceptionMessage,
     n_msgRegisters, n_syscallMessage, FaultIP, NextIP, SSTATUS,
 };
+use sel4_common::fault::*;
+use sel4_common::message_info::seL4_MessageInfo_t;
 use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::BIT;

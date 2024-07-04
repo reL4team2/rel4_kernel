@@ -25,9 +25,9 @@ pub const RISCVPageBits: usize = 12;
 pub const RISCVMegaPageBits: usize = 21;
 pub const RISCVGigaPageBits: usize = 30;
 
-pub const ARMSmallPageBits:usize = 12;
-pub const ARMLargePageBits:usize = 21;
-pub const ARMHugePageBits:usize = 30;
+pub const ARMSmallPageBits: usize = 12;
+pub const ARMLargePageBits: usize = 21;
+pub const ARMHugePageBits: usize = 30;
 
 pub const PT_INDEX_BITS: usize = 9;
 pub const CONFIG_PT_LEVELS: usize = 3;
