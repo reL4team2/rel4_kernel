@@ -44,6 +44,7 @@ pub fn sfence_local() {
 #[cfg(not(feature = "ENABLE_SMP"))]
 #[inline]
 pub fn sfence() {
+    #[cfg(target_arch = "riscv64")]
     unsafe {
         core::arch::asm!("sfence.vma");
     }

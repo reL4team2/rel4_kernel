@@ -5,7 +5,7 @@ use crate::{
     syscall::{slowpath, SysCall, SysReplyRecv},
 };
 use core::intrinsics::{likely, unlikely};
-use sel4_common::registers::msgRegister;
+use sel4_common::arch::msgRegister;
 use sel4_common::{
     fault::*,
     message_info::*,

@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+mod registers;
+pub use registers::*;
 use riscv::register::time;
 
 const SBI_SET_TIMER: usize = 0;

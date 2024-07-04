@@ -7,8 +7,8 @@ use crate::{
     BIT, IS_ALIGNED, MASK,
 };
 use log::debug;
+use sel4_common::arch::{msgRegister, n_msgRegisters};
 use sel4_common::fault::*;
-use sel4_common::registers::{msgRegister, n_msgRegisters};
 use sel4_common::sel4_config::seL4_MinUntypedBits;
 use sel4_common::{
     sel4_config::*,

@@ -100,12 +100,12 @@ pub fn findVSpaceForASID(_asid: asid_t) -> findVSpaceForASID_ret {
 }
 
 #[inline]
-fn hwASIDFlush(asid: asid_t) {
+fn hwASIDFlush(_asid: asid_t) {
     #[cfg(target_arch = "aarch64")]
     todo!("hwASIDFlush");
     #[cfg(target_arch = "riscv64")]
     unsafe {
-        asm!("sfence.vma x0, {0}",in(reg) asid);
+        asm!("sfence.vma x0, {0}",in(reg) _asid);
     }
 }
 
