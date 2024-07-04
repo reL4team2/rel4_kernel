@@ -1,5 +1,4 @@
 use log::debug;
-use sel4_common::sel4_config::KERNEL_ELF_BASE;
 
 use super::ndks_boot;
 use crate::boot::utils::ceiling_kernel_window;
@@ -8,54 +7,22 @@ use crate::boot::utils::paddr_to_pptr_reg;
 use crate::boot::utils::pptr_to_paddr_reg;
 use crate::config::*;
 use crate::structures::*;
-use sel4_vspace::*;
-#[link_section = ".boot.bss"]
-static mut res_reg: [region_t; NUM_RESERVED_REGIONS] =
-    [region_t { start: 0, end: 0 }; NUM_RESERVED_REGIONS];
 
 #[link_section = ".boot.bss"]
 static mut avail_reg: [region_t; MAX_NUM_FREEMEM_REG] =
     [region_t { start: 0, end: 0 }; MAX_NUM_FREEMEM_REG];
 
 #[link_section = ".boot.bss"]
-pub static mut avail_p_regs_addr: usize = 0;
+pub static mut res_reg: [region_t; NUM_RESERVED_REGIONS] =
+    [region_t { start: 0, end: 0 }; NUM_RESERVED_REGIONS];
 
 #[link_section = ".boot.bss"]
 pub static mut avail_p_regs_size: usize = 0;
 
-pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
-    extern "C" {
-        fn ki_end();
-    }
-    unsafe {
-        res_reg[0].start = paddr_to_pptr(kpptr_to_paddr(KERNEL_ELF_BASE));
-        res_reg[0].end = paddr_to_pptr(kpptr_to_paddr(ki_end as usize));
-    }
+#[link_section = ".boot.bss"]
+pub static mut avail_p_regs_addr: usize = 0;
 
-    let mut index = 1;
-
-    if dtb_p_reg.start != 0 {
-        if index >= NUM_RESERVED_REGIONS {
-            debug!("ERROR: no slot to add DTB to reserved regions\n");
-            return false;
-        }
-        unsafe {
-            res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
-            index += 1;
-        }
-    }
-    if index >= NUM_RESERVED_REGIONS {
-        debug!("ERROR: no slot to add user image to reserved regions\n");
-        return false;
-    }
-    unsafe {
-        res_reg[index] = ui_reg;
-        index += 1;
-        rust_init_freemem(avail_p_regs_size, avail_p_regs_addr, index, res_reg.clone())
-    }
-}
-
-fn rust_init_freemem(
+pub fn rust_init_freemem(
     n_available: usize,
     available: usize,
     n_reserved: usize,
@@ -226,7 +193,7 @@ fn insert_region(reg: region_t) -> bool {
     return false;
 }
 
-unsafe fn reserve_region(reg: p_region_t) -> bool {
+pub unsafe fn reserve_region(reg: p_region_t) -> bool {
     assert!(reg.start <= reg.end);
     if reg.start == reg.end {
         return true;

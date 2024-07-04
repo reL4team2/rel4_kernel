@@ -17,16 +17,19 @@ use log::debug;
 use sel4_common::sel4_config::{seL4_PageBits, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use spin::Mutex;
 
-use crate::boot::mm::init_freemem;
+use crate::arch::init_freemem;
 use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
-use crate::boot::utils::paddr_to_pptr_reg;
+pub use crate::boot::utils::paddr_to_pptr_reg;
 use crate::config::*;
 use crate::structures::{
     ndks_boot_t, p_region_t, region_t, seL4_BootInfo, seL4_BootInfoHeader, seL4_SlotRegion,
     v_region_t,
 };
 
+pub use mm::{avail_p_regs_addr, avail_p_regs_size, res_reg, rust_init_freemem};
+#[cfg(target_arch = "aarch64")]
+pub use mm::reserve_region;
 pub use root_server::rootserver;
 use sel4_task::*;
 use sel4_vspace::*;

@@ -4,7 +4,7 @@ mod platform;
 
 pub use c_traps::restore_user_context;
 use core::arch::asm;
-pub use platform::init_cpu;
+pub use platform::{init_cpu, init_freemem};
 
 use crate::config::RESET_CYCLES;
 use sel4_common::arch::sbi::set_timer;
