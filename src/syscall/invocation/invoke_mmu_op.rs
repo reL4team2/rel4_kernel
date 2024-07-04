@@ -1,4 +1,4 @@
-use sel4_common::registers::msgInfoRegister;
+use sel4_common::arch::msgInfoRegister;
 use sel4_common::utils::MAX_FREE_INDEX;
 use sel4_common::MASK;
 use sel4_common::{

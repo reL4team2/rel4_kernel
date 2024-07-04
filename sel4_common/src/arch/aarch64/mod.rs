@@ -1,4 +1,6 @@
 #![allow(unused)]
+mod registers;
+pub use registers::*;
 
 pub fn set_timer(timer: usize) {
     todo!("set_timer")

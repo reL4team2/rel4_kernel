@@ -1,4 +1,4 @@
-use sel4_common::registers::*;
+use sel4_common::arch::*;
 use sel4_common::{
     message_info::seL4_MessageInfo_t,
     sel4_config::{tcbBuffer, tcbCTable, tcbVTable},

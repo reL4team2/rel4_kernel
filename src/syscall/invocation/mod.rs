@@ -8,7 +8,7 @@ mod invoke_untyped;
 use core::intrinsics::unlikely;
 
 use log::debug;
-use sel4_common::registers::{capRegister, msgInfoRegister, n_msgRegisters};
+use sel4_common::arch::{capRegister, msgInfoRegister, n_msgRegisters};
 use sel4_common::{fault::seL4_Fault_t, message_info::seL4_MessageInfo_t, structures::exception_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 

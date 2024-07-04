@@ -2,7 +2,7 @@
 use crate::deps::{doMaskReschedule, kernel_stack_alloc, ksIdleThreadTCB};
 use core::arch::asm;
 use core::intrinsics::{likely, unlikely};
-use sel4_common::registers::{sp, FaultIP, NextIP, SSTATUS, SSTATUS_SPIE, SSTATUS_SPP};
+use sel4_common::arch::{sp, FaultIP, NextIP, SSTATUS, SSTATUS_SPIE, SSTATUS_SPP};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::sel4_config::{seL4_TCBBits, CONFIG_MAX_NUM_NODES};
 use sel4_common::sel4_config::{

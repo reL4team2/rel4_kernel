@@ -2,7 +2,7 @@ use core::intrinsics::{likely, unlikely};
 
 use sel4_common::fault::*;
 use sel4_common::message_info::seL4_MessageInfo_t;
-use sel4_common::registers::{
+use sel4_common::arch::{
     fault_messages, msgInfoRegister, msgRegister, n_contextRegisters, n_exceptionMessage,
     n_msgRegisters, n_syscallMessage, FaultIP, NextIP, SSTATUS,
 };
