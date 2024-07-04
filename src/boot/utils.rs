@@ -87,18 +87,7 @@ pub extern "C" fn map_it_pt_cap(_vspace_cap: &cap_t, _pt_cap: &cap_t) {
     let pt = _pt_cap.get_cap_ptr();
     let pt_ret = lvl1pt.lookup_pt_slot(vptr);
     let targetSlot = convert_to_mut_type_ref::<pte_t>(pt_ret.ptSlot as usize);
-    *targetSlot = pte_t::new(
-        pptr_to_paddr(pt) >> seL4_PageBits,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-    );
+    *targetSlot = pte_t::new(pptr_to_paddr(pt) >> seL4_PageBits, PTEFlags::V);
     sfence();
 }
 
@@ -118,15 +107,7 @@ pub fn map_it_frame_cap(_vspace_cap: &cap_t, _frame_cap: &cap_t) {
     let targetSlot = convert_to_mut_type_ref::<pte_t>(pt_ret.ptSlot as usize);
     *targetSlot = pte_t::new(
         pptr_to_paddr(frame_pptr) >> seL4_PageBits,
-        0,
-        1,
-        1,
-        0,
-        1,
-        1,
-        1,
-        1,
-        1,
+        PTEFlags::ADUVRWX,
     );
     sfence();
 }
@@ -140,6 +121,6 @@ pub fn write_it_asid_pool(it_ap_cap: &cap_t, it_lvl1pt_cap: &cap_t) {
     unsafe {
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_lvl1pt_cap.get_cap_ptr();
-        riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
+        KSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
 }

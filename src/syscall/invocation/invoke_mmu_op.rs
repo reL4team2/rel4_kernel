@@ -11,7 +11,7 @@ use sel4_cspace::interface::{cap_t, cte_insert, cte_t, seL4_CapRights_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
     asid_pool_t, copyGlobalMappings, maskVMRights, pptr_t, pptr_to_paddr, pte_t,
-    set_asid_pool_by_index, sfence, unmapPage, vm_attributes_t,
+    set_asid_pool_by_index, sfence, unmapPage, vm_attributes_t, PTEFlags,
 };
 
 use crate::{config::badgeRegister, kernel::boot::current_lookup_fault, utils::clear_memory};
@@ -33,18 +33,7 @@ pub fn invoke_page_table_map(
     vaddr: usize,
 ) -> exception_t {
     let paddr = pptr_to_paddr(pt_cap.get_pt_base_ptr());
-    let pte = pte_t::new(
-        paddr >> seL4_PageBits,
-        0, /* sw */
-        0, /* dirty (reserved non-leaf) */
-        0, /* accessed (reserved non-leaf) */
-        0, /* global */
-        0, /* user (reserved non-leaf) */
-        0, /* execute */
-        0, /* write */
-        0, /* read */
-        1, /* valid */
-    );
+    let pte = pte_t::new(paddr >> seL4_PageBits, PTEFlags::V);
     pt_cap.set_pt_is_mapped(1);
     pt_cap.set_pt_mapped_asid(asid);
     pt_cap.set_pt_mapped_address(vaddr);
