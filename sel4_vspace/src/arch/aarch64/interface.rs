@@ -1,6 +1,5 @@
 use super::PTEFlags;
 use crate::pte_t;
-use aarch64_cpu::register::TTBR0_EL1;
 use sel4_common::{
     sel4_config::{seL4_LargePageBits, PADDR_BASE, PADDR_TOP, PPTR_BASE, PPTR_TOP, PT_INDEX_BITS},
     BIT,
@@ -64,9 +63,4 @@ fn rust_map_kernel_window() {
     }
 
     //FIXME:: map_kernel_window not implemented;
-}
-
-#[no_mangle]
-pub fn activate_kernel_vspace() {
-    TTBR0_EL1
 }

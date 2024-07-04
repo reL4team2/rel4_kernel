@@ -67,11 +67,11 @@ pub struct vm_attributes_t(pub(crate) usize);
 
 impl vm_attributes_t {
     pub fn new(value: usize) -> Self {
-        Self(0)
+        Self(value)
     }
 
     pub fn from_word(w: usize) -> Self {
-        Self::new(0)
+        Self::new(w)
     }
 
     pub fn get_execute_never(&self) -> usize {
