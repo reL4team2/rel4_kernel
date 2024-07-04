@@ -1,11 +1,19 @@
 use crate::{pte_t, vm_attributes_t};
-use bitflags::bitflags;
-use sel4_common::BIT;
+use sel4_common::{sel4_config::seL4_PageTableBits, utils::convert_to_mut_type_ref, BIT};
+
+use super::utils::paddr_to_pptr;
 
 enum vm_page_size {
     ARMSmallPage,
     ARMLargePage,
     ARMHugePage,
+}
+
+enum pte_tag {
+    pte_pte_table = 3,
+    pte_pte_page = 1,
+    pte_pte_4k_page = 7,
+    pte_pte_invalid = 0,
 }
 
 bitflags::bitflags! {
@@ -63,13 +71,33 @@ bitflags::bitflags! {
 
 impl pte_t {
     pub fn new(addr: usize, flags: PTEFlags) -> Self {
-        Self((addr & 0xfffffffff000) | flag.bits())
+        Self((addr & 0xfffffffff000) | flags.bits())
     }
     pub fn pte_next_table(addr: usize, _: bool) -> Self {
-        new(addr, PTEFlags::EMPTY)
+        Self::new(addr, PTEFlags::EMPTY)
     }
     fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
-        Self((addr & 0xfffffffff000) | flag.bits() | 0x400000000000003)
+        Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
+    }
+
+    pub fn get_pte_from_ppn_mut(&self) -> &mut pte_t {
+        convert_to_mut_type_ref::<pte_t>(paddr_to_pptr(self.get_ppn() << seL4_PageTableBits))
+    }
+
+    pub fn get_ppn(&self) -> usize {
+        (self.0 & 0xfffffffff000) >> 10
+    }
+
+    pub fn get_type(&self) -> usize {
+        (self.0 & 0x3) | ((0x1 << 58) >> 56)
+    }
+
+    pub fn is_pte_table(&self) -> bool {
+        self.get_type() != pte_tag::pte_pte_table as usize
+    }
+
+    pub fn is_valid(&self) -> usize {
+        (self.get_type() != pte_tag::pte_pte_invalid as usize) as usize
     }
 
     pub fn makeUserPTE(

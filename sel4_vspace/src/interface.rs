@@ -1,9 +1,8 @@
 // use crate::{common::{sel4_config::*, structures::exception_t, utils::{convert_to_mut_type_ref, pageBitsForSize}, fault::*}, BIT, ROUND_DOWN};
 use crate::arch::pptr_to_paddr;
-use crate::arch::riscv64::find_vspace_for_asid;
 #[cfg(target_arch = "riscv64")]
 use crate::arch::riscv64::sfence;
-use crate::{asid_t, pptr_t, vptr_t};
+use crate::{asid_t, find_vspace_for_asid, pptr_t, vptr_t};
 use sel4_common::fault::lookup_fault_t;
 use sel4_common::sel4_config::seL4_PageBits;
 use sel4_common::structures::exception_t;

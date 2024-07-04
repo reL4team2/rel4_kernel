@@ -1,10 +1,8 @@
 #[cfg(target_arch = "riscv64")]
 use crate::arch::hwASIDFlush;
-use crate::arch::set_vm_root;
+use crate::{arch::set_vm_root, findVSpaceForASID_ret};
 use sel4_common::{
-    fault::lookup_fault_t,
-    sel4_config::{asidHighBits, asidLowBits, IT_ASID},
-    BIT, MASK,
+    fault::lookup_fault_t, sel4_config::{asidHighBits, asidLowBits, IT_ASID}, structures::exception_t, BIT, MASK
 };
 use sel4_cspace::interface::cap_t;
 
@@ -64,4 +62,36 @@ pub fn delete_asid_pool(
             Ok(())
         }
     }
+}
+
+
+///根据给定的`asid`在`riscvKSASIDTable`中寻找对应的虚拟地址空间页表基址
+///
+/// Find the root page table associated with asid.
+#[no_mangle]
+pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
+    let mut ret: findVSpaceForASID_ret = findVSpaceForASID_ret {
+        status: exception_t::EXCEPTION_FAULT,
+        vspace_root: None,
+        lookup_fault: None,
+    };
+
+    let poolPtr = unsafe { riscvKSASIDTable[asid >> asidLowBits] };
+    if poolPtr as usize == 0 {
+        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
+        ret.vspace_root = None;
+        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
+        return ret;
+    }
+    let vspace_root = unsafe { (*poolPtr).array[asid & MASK!(asidLowBits)] };
+    if vspace_root as usize == 0 {
+        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
+        ret.vspace_root = None;
+        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
+        return ret;
+    }
+    ret.vspace_root = Some(vspace_root);
+    ret.status = exception_t::EXCEPTION_NONE;
+    // vspace_root0xffffffc17fec1000
+    return ret;
 }

@@ -30,36 +30,7 @@ pub fn set_asid_pool_by_index(index: usize, pool_ptr: pptr_t) {
     }
 }
 
-///根据给定的`asid`在`riscvKSASIDTable`中寻找对应的虚拟地址空间页表基址
-///
-/// Find the root page table associated with asid.
-#[no_mangle]
-pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
-    let mut ret: findVSpaceForASID_ret = findVSpaceForASID_ret {
-        status: exception_t::EXCEPTION_FAULT,
-        vspace_root: None,
-        lookup_fault: None,
-    };
 
-    let poolPtr = unsafe { riscvKSASIDTable[asid >> asidLowBits] };
-    if poolPtr as usize == 0 {
-        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
-        ret.vspace_root = None;
-        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
-        return ret;
-    }
-    let vspace_root = unsafe { (*poolPtr).array[asid & MASK!(asidLowBits)] };
-    if vspace_root as usize == 0 {
-        ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
-        ret.vspace_root = None;
-        ret.status = exception_t::EXCEPTION_LOOKUP_FAULT;
-        return ret;
-    }
-    ret.vspace_root = Some(vspace_root);
-    ret.status = exception_t::EXCEPTION_NONE;
-    // vspace_root0xffffffc17fec1000
-    return ret;
-}
 
 #[no_mangle]
 pub fn findVSpaceForASID(_asid: asid_t) -> findVSpaceForASID_ret {

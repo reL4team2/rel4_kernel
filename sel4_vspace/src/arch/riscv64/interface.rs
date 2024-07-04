@@ -1,13 +1,11 @@
+use crate::find_vspace_for_asid;
 use core::intrinsics::unlikely;
 use sel4_common::{fault::lookup_fault_t, structures::exception_t, utils::convert_to_mut_type_ref};
 use sel4_cspace::interface::{cap_t, CapTag};
 
 use crate::pte_t;
 
-use super::{
-    find_vspace_for_asid, kpptr_to_paddr, pagetable::kernel_root_pageTable, pptr_to_paddr,
-    setVSpaceRoot,
-};
+use super::{kpptr_to_paddr, pagetable::kernel_root_pageTable, pptr_to_paddr, setVSpaceRoot};
 
 ///根据给定的`vspace_root`设置相应的页表，会检查`vspace_root`是否合法，如果不合法默认设置为内核页表
 ///

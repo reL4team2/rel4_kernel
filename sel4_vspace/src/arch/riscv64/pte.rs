@@ -5,13 +5,12 @@ use sel4_common::{
     sel4_config::{seL4_PageBits, seL4_PageTableBits, CONFIG_PT_LEVELS},
     structures::exception_t,
     utils::{convert_to_mut_type_ref, convert_to_type_ref},
-    BIT, 
+    BIT,
 };
 
 use crate::{
-    arch::riscv64::{asid::find_vspace_for_asid, sfence, utils::RISCV_GET_PT_INDEX},
-    asid_t,
-    pte_t, vptr_t,
+    arch::riscv64::{sfence, utils::RISCV_GET_PT_INDEX},
+    asid_t, find_vspace_for_asid, pte_t, vptr_t,
 };
 
 use super::{
