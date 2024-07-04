@@ -6,7 +6,7 @@ mod utils;
 
 use core::mem::size_of;
 
-use crate::arch::init_cpu;
+use crate::arch::{init_cpu, init_freemem};
 use crate::ffi::{init_plat, tcbDebugAppend};
 use crate::{BIT, ROUND_UP};
 #[cfg(target_arch = "aarch64")]
@@ -17,7 +17,8 @@ use log::debug;
 use sel4_common::sel4_config::{seL4_PageBits, KERNEL_ELF_BASE, PADDR_TOP, PAGE_BITS};
 use spin::Mutex;
 
-use crate::arch::init_freemem;
+#[cfg(target_arch = "aarch64")]
+use crate::arch::{cleanInvalidateL1Caches, invalidateLocalTLB};
 use crate::boot::root_server::root_server_init;
 use crate::boot::untyped::create_untypeds;
 pub use crate::boot::utils::paddr_to_pptr_reg;
@@ -27,9 +28,9 @@ use crate::structures::{
     v_region_t,
 };
 
-pub use mm::{avail_p_regs_addr, avail_p_regs_size, res_reg, rust_init_freemem};
 #[cfg(target_arch = "aarch64")]
 pub use mm::reserve_region;
+pub use mm::{avail_p_regs_addr, avail_p_regs_size, res_reg, rust_init_freemem};
 pub use root_server::rootserver;
 use sel4_task::*;
 use sel4_vspace::*;
@@ -248,6 +249,8 @@ pub fn try_init_kernel(
         v_entry,
     ) {
         create_idle_thread();
+        #[cfg(target_arch = "aarch64")]
+        cleanInvalidateL1Caches();
         init_core_state(initial_thread);
         if !create_untypeds(&root_cnode_cap, boot_mem_reuse_reg) {
             debug!("ERROR: could not create untypteds for kernel image boot memory");
@@ -257,6 +260,10 @@ pub fn try_init_kernel(
 
             bi_finalise(dtb_size, dtb_phys_addr, extra_bi_size);
         }
+        #[cfg(target_arch = "aarch64")]
+        cleanInvalidateL1Caches();
+        #[cfg(target_arch = "aarch64")]
+        invalidateLocalTLB();
         // debug!("release_secondary_cores start");
         *ksNumCPUs.lock() = 1;
         #[cfg(feature = "ENABLE_SMP")]
