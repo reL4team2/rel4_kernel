@@ -121,6 +121,6 @@ pub fn write_it_asid_pool(it_ap_cap: &cap_t, it_lvl1pt_cap: &cap_t) {
     unsafe {
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_lvl1pt_cap.get_cap_ptr();
-        KSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
+        riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
 }

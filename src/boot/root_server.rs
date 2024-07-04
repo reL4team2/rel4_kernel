@@ -196,7 +196,7 @@ fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
         let ap = it_ap_cap.get_cap_ptr();
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_pd_cap.get_cap_ptr();
-        KSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
+        riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
     }
     true
 }

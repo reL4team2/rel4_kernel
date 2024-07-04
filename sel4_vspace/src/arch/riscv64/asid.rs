@@ -1,15 +1,11 @@
 use core::arch::asm;
 use core::intrinsics::unlikely;
 
-use crate::{
-    asid::KSASIDTable, asid_pool_t, asid_t, findVSpaceForASID_ret, pte_t, structures::pptr_t,
-};
+use crate::{asid::riscvKSASIDTable, asid_pool_t, asid_t, findVSpaceForASID_ret, structures::pptr_t};
 use sel4_common::{
     fault::*, sel4_config::*, structures::exception_t, utils::convert_to_option_mut_type_ref, BIT,
     MASK,
 };
-
-use super::interface::set_vm_root;
 
 /// `riscvKSASIDSpace`寻找对应`index`的`asid pool`
 ///
@@ -20,7 +16,7 @@ pub fn get_asid_pool_by_index(index: usize) -> Option<&'static mut asid_pool_t> 
         if unlikely(index >= BIT!(asidHighBits)) {
             return None;
         }
-        return convert_to_option_mut_type_ref::<asid_pool_t>(KSASIDTable[index] as usize);
+        return convert_to_option_mut_type_ref::<asid_pool_t>(riscvKSASIDTable[index] as usize);
     }
 }
 
@@ -30,11 +26,11 @@ pub fn get_asid_pool_by_index(index: usize) -> Option<&'static mut asid_pool_t> 
 pub fn set_asid_pool_by_index(index: usize, pool_ptr: pptr_t) {
     // assert!(index < BIT!(asidHighBits));
     unsafe {
-        KSASIDTable[index] = pool_ptr as *mut asid_pool_t;
+        riscvKSASIDTable[index] = pool_ptr as *mut asid_pool_t;
     }
 }
 
-///根据给定的`asid`在`KSASIDTable`中寻找对应的虚拟地址空间页表基址
+///根据给定的`asid`在`riscvKSASIDTable`中寻找对应的虚拟地址空间页表基址
 ///
 /// Find the root page table associated with asid.
 #[no_mangle]
@@ -45,7 +41,7 @@ pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
         lookup_fault: None,
     };
 
-    let poolPtr = unsafe { KSASIDTable[asid >> asidLowBits] };
+    let poolPtr = unsafe { riscvKSASIDTable[asid >> asidLowBits] };
     if poolPtr as usize == 0 {
         ret.lookup_fault = Some(lookup_fault_t::new_root_invalid());
         ret.vspace_root = None;
