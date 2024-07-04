@@ -33,12 +33,9 @@ pub enum FaultType {
 
 impl seL4_Fault_t {
     pub fn get_fault_type(&self) -> FaultType {
-        unsafe {
-            core::mem::transmute::<u8, FaultType>(self.get_type() as u8)
-        }
+        unsafe { core::mem::transmute::<u8, FaultType>(self.get_type() as u8) }
     }
 }
-
 
 pub const seL4_Fault_NullFault: usize = FaultType::NullFault as usize;
 pub const seL4_Fault_CapFault: usize = FaultType::CapFault as usize;
@@ -62,9 +59,6 @@ pub const seL4_CapFault_DepthMismatch_BitsFound: usize = 5;
 pub const seL4_CapFault_GuardMismatch_GuardFound: usize = seL4_CapFault_DepthMismatch_BitsFound;
 pub const seL4_CapFault_GuardMismatch_BitsFound: usize = 6;
 
-
-
-
 // lookup_fault
 #[derive(PartialEq, Eq)]
 pub enum LookupFaultType {
@@ -78,7 +72,6 @@ pub const lookup_fault_invalid_root: usize = LookupFaultType::InvaildRoot as usi
 pub const lookup_fault_missing_capability: usize = LookupFaultType::MissingCap as usize;
 pub const lookup_fault_depth_mismatch: usize = LookupFaultType::DepthMismatch as usize;
 pub const lookup_fault_guard_mismatch: usize = LookupFaultType::GuardMismatch as usize;
-
 
 plus_define_bitfield! {
     lookup_fault_t, 2, 0, 0, 2 => {
@@ -100,8 +93,6 @@ plus_define_bitfield! {
 
 impl lookup_fault_t {
     pub fn get_lookup_fault_type(&self) -> LookupFaultType {
-        unsafe {
-            core::mem::transmute::<u8, LookupFaultType>(self.get_type() as u8)
-        }
+        unsafe { core::mem::transmute::<u8, LookupFaultType>(self.get_type() as u8) }
     }
 }

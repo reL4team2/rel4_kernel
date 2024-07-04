@@ -1,7 +1,7 @@
-
-use sel4_common::sel4_config::KERNEL_ELF_BASE;
 use log::debug;
+use sel4_common::sel4_config::KERNEL_ELF_BASE;
 
+use super::ndks_boot;
 use crate::boot::utils::ceiling_kernel_window;
 use crate::boot::utils::is_reg_empty;
 use crate::boot::utils::paddr_to_pptr_reg;
@@ -9,7 +9,6 @@ use crate::boot::utils::pptr_to_paddr_reg;
 use crate::config::*;
 use crate::structures::*;
 use sel4_vspace::*;
-use super::ndks_boot;
 #[link_section = ".boot.bss"]
 static mut res_reg: [region_t; NUM_RESERVED_REGIONS] =
     [region_t { start: 0, end: 0 }; NUM_RESERVED_REGIONS];
@@ -23,7 +22,6 @@ pub static mut avail_p_regs_addr: usize = 0;
 
 #[link_section = ".boot.bss"]
 pub static mut avail_p_regs_size: usize = 0;
-
 
 pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
     extern "C" {
@@ -53,15 +51,9 @@ pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
     unsafe {
         res_reg[index] = ui_reg;
         index += 1;
-        rust_init_freemem(
-            avail_p_regs_size,
-            avail_p_regs_addr,
-            index,
-            res_reg.clone(),
-        )
+        rust_init_freemem(avail_p_regs_size, avail_p_regs_addr, index, res_reg.clone())
     }
 }
-
 
 fn rust_init_freemem(
     n_available: usize,
@@ -152,7 +144,6 @@ fn rust_init_freemem(
             );
             return false;
         }
-
     }
     true
 }
@@ -188,11 +179,7 @@ fn check_available_memory(n_available: usize, available: usize) -> bool {
     return true;
 }
 
-
-fn check_reserved_memory(
-    n_reserved: usize,
-    reserved: [region_t; NUM_RESERVED_REGIONS],
-) -> bool {
+fn check_reserved_memory(n_reserved: usize, reserved: [region_t; NUM_RESERVED_REGIONS]) -> bool {
     debug!("reserved virt address space regions: {}", n_reserved);
     let mut last: region_t = reserved[0].clone();
     for i in 0..n_reserved {
@@ -241,45 +228,45 @@ fn insert_region(reg: region_t) -> bool {
 
 unsafe fn reserve_region(reg: p_region_t) -> bool {
     assert!(reg.start <= reg.end);
-        if reg.start == reg.end {
+    if reg.start == reg.end {
+        return true;
+    }
+
+    let mut i = 0;
+    while i < ndks_boot.resv_count {
+        if ndks_boot.reserved[i].start == reg.end {
+            ndks_boot.reserved[i].start = reg.start;
+            merge_regions();
             return true;
         }
-
-        let mut i = 0;
-        while i < ndks_boot.resv_count {
-            if ndks_boot.reserved[i].start == reg.end {
-                ndks_boot.reserved[i].start = reg.start;
-                merge_regions();
-                return true;
-            }
-            if ndks_boot.reserved[i].end == reg.start {
-                ndks_boot.reserved[i].end = reg.end;
-                merge_regions();
-                return true;
-            }
-            if ndks_boot.reserved[i].start > reg.end {
-                if ndks_boot.resv_count + 1 >= MAX_NUM_RESV_REG {
-                    debug!("Can't mark region {:#x}-{:#x} as reserved, try increasing MAX_NUM_RESV_REG (currently {})\n",reg.start,reg.end,MAX_NUM_RESV_REG);
-                    return false;
-                }
-                let mut j = ndks_boot.resv_count;
-                while j > i {
-                    ndks_boot.reserved[j] = ndks_boot.reserved[j - 1];
-                    j -= 1;
-                }
-                ndks_boot.reserved[i] = reg;
-                ndks_boot.resv_count += 1;
-                return true;
-            }
-            i += 1;
+        if ndks_boot.reserved[i].end == reg.start {
+            ndks_boot.reserved[i].end = reg.end;
+            merge_regions();
+            return true;
         }
-        if i + 1 == MAX_NUM_RESV_REG {
-            debug!("Can't mark region 0x{}-0x{} as reserved, try increasing MAX_NUM_RESV_REG (currently {})\n",reg.start,reg.end,MAX_NUM_RESV_REG);
-            return false;
+        if ndks_boot.reserved[i].start > reg.end {
+            if ndks_boot.resv_count + 1 >= MAX_NUM_RESV_REG {
+                debug!("Can't mark region {:#x}-{:#x} as reserved, try increasing MAX_NUM_RESV_REG (currently {})\n",reg.start,reg.end,MAX_NUM_RESV_REG);
+                return false;
+            }
+            let mut j = ndks_boot.resv_count;
+            while j > i {
+                ndks_boot.reserved[j] = ndks_boot.reserved[j - 1];
+                j -= 1;
+            }
+            ndks_boot.reserved[i] = reg;
+            ndks_boot.resv_count += 1;
+            return true;
         }
-        ndks_boot.reserved[i] = reg;
-        ndks_boot.resv_count += 1;
-        return true;
+        i += 1;
+    }
+    if i + 1 == MAX_NUM_RESV_REG {
+        debug!("Can't mark region 0x{}-0x{} as reserved, try increasing MAX_NUM_RESV_REG (currently {})\n",reg.start,reg.end,MAX_NUM_RESV_REG);
+        return false;
+    }
+    ndks_boot.reserved[i] = reg;
+    ndks_boot.resv_count += 1;
+    return true;
 }
 
 unsafe fn merge_regions() {

@@ -2,7 +2,6 @@ use sel4_common::utils::convert_to_mut_type_ref;
 
 use super::tcb::tcb_t;
 
-
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub struct tcb_queue_t {
@@ -39,6 +38,6 @@ impl tcb_queue_t {
 
     #[inline]
     pub fn empty(&self) -> bool {
-        return self.head == 0
+        return self.head == 0;
     }
 }
