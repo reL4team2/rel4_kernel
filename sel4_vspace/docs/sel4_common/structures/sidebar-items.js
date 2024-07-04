@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["exception_t"],"struct":["seL4_IPCBuffer"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["MAX_FREE_INDEX","convert_to_mut_type_ref","convert_to_mut_type_ref_unsafe","convert_to_option_mut_type_ref","convert_to_option_type_ref","convert_to_type_ref","cpu_id","pageBitsForSize"]};
