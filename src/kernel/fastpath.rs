@@ -115,7 +115,8 @@ pub fn fastpath_copy_mrs(length: usize, src: &mut tcb_t, dest: &mut tcb_t) {
     let mut reg: usize;
     for i in 0..length {
         reg = msgRegister[0] + i;
-        dest.set_register(reg, src.get_register(reg));
+        dest.tcbArch
+            .set_register(reg, src.tcbArch.get_register(reg));
     }
 }
 

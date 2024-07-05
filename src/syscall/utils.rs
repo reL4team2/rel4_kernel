@@ -51,7 +51,7 @@ pub fn getSyscallArg(i: usize, ipc_buffer: *const usize) -> usize {
     unsafe {
         return if i < n_msgRegisters {
             // return getRegister(get_currenct_thread() as *const tcb_t, msgRegister[i]);
-            get_currenct_thread().get_register(msgRegister[i])
+            get_currenct_thread().tcbArch.get_register(msgRegister[i])
         } else {
             assert_ne!(ipc_buffer as usize, 0);
             let ptr = ipc_buffer.add(i + 1);
@@ -77,7 +77,7 @@ pub fn lookup_extra_caps_with_buf(thread: &tcb_t, buf: Option<&seL4_IPCBuffer>) 
 #[inline]
 pub fn get_syscall_arg(i: usize, ipc_buffer: Option<&seL4_IPCBuffer>) -> usize {
     if i < n_msgRegisters {
-        return get_currenct_thread().get_register(msgRegister[i]);
+        return get_currenct_thread().tcbArch.get_register(msgRegister[i]);
     }
     return ipc_buffer.unwrap().msg[i];
 }

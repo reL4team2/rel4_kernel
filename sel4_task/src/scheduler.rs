@@ -2,12 +2,12 @@
 use crate::deps::{doMaskReschedule, kernel_stack_alloc, ksIdleThreadTCB};
 use core::arch::asm;
 use core::intrinsics::{likely, unlikely};
-use sel4_common::arch::{sp, FaultIP, NextIP, SSTATUS, SSTATUS_SPIE, SSTATUS_SPP};
+use sel4_common::arch::{FaultIP, NextIP};
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::sel4_config::{seL4_TCBBits, CONFIG_MAX_NUM_NODES};
 use sel4_common::sel4_config::{
-    wordBits, wordRadix, CONFIG_KERNEL_STACK_BITS, CONFIG_NUM_DOMAINS, CONFIG_NUM_PRIORITIES,
-    CONFIG_TIME_SLICE, L2_BITMAP_SIZE, NUM_READY_QUEUES, TCB_OFFSET,
+    wordBits, wordRadix, CONFIG_NUM_DOMAINS, CONFIG_NUM_PRIORITIES, CONFIG_TIME_SLICE,
+    L2_BITMAP_SIZE, NUM_READY_QUEUES, TCB_OFFSET,
 };
 use sel4_common::utils::{convert_to_mut_type_ref, convert_to_mut_type_ref_unsafe};
 use sel4_common::{BIT, MASK};
@@ -488,9 +488,9 @@ pub fn activateThread() {
             return;
         }
         ThreadState::ThreadStateRestart => {
-            let pc = thread.get_register(FaultIP);
+            let pc = thread.tcbArch.get_register(FaultIP);
             // setNextPC(thread, pc);
-            thread.set_register(NextIP, pc);
+            thread.tcbArch.set_register(NextIP, pc);
             // setThreadState(thread, ThreadStateRunning);
             set_thread_state(thread, ThreadState::ThreadStateRunning);
         }
@@ -509,19 +509,14 @@ pub fn activateThread() {
 
 #[cfg(not(feature = "ENABLE_SMP"))]
 pub fn create_idle_thread() {
-    use crate::deps::{kernel_stack_alloc, ksIdleThreadTCB};
+    use crate::{deps::ksIdleThreadTCB, Arch_configureIdleThread};
 
     unsafe {
         let pptr = ksIdleThreadTCB as usize as *mut usize;
         ksIdleThread = pptr.add(TCB_OFFSET) as usize;
         // let tcb = convert_to_mut_type_ref::<tcb_t>(ksIdleThread as usize);
         let tcb = get_idle_thread();
-        tcb.set_register(NextIP, idle_thread as usize);
-        tcb.set_register(SSTATUS, SSTATUS_SPP | SSTATUS_SPIE);
-        tcb.set_register(
-            sp,
-            kernel_stack_alloc as usize + BIT!(CONFIG_KERNEL_STACK_BITS),
-        );
+        Arch_configureIdleThread(tcb.tcbArch);
         set_thread_state(tcb, ThreadState::ThreadStateIdleThreadState);
     }
 }
@@ -535,9 +530,10 @@ pub fn create_idle_thread() {
             ksSMP[i].ksIdleThread = pptr.add(TCB_OFFSET) as usize;
             debug!("ksIdleThread: {:#x}", ksSMP[i].ksIdleThread);
             let tcb = convert_to_mut_type_ref::<tcb_t>(ksSMP[i].ksIdleThread);
-            tcb.set_register(NextIP, idle_thread as usize);
-            tcb.set_register(SSTATUS, SSTATUS_SPP | SSTATUS_SPIE);
-            tcb.set_register(
+            tcb.tcbArch.set_register(NextIP, idle_thread as usize);
+            tcb.tcbArch
+                .set_register(SSTATUS, SSTATUS_SPP | SSTATUS_SPIE);
+            tcb.tcbArch.set_register(
                 sp,
                 kernel_stack_alloc as usize + (i + 1) * BIT!(CONFIG_KERNEL_STACK_BITS),
             );
@@ -547,7 +543,7 @@ pub fn create_idle_thread() {
     }
 }
 
-fn idle_thread() {
+pub fn idle_thread() {
     unsafe {
         loop {
             // debug!("hello idle_thread");

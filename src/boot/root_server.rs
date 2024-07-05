@@ -161,8 +161,8 @@ unsafe fn create_initial_thread(
     );
 
     tcb.tcbIPCBuffer = ipcbuf_vptr;
-    tcb.set_register(capRegister, bi_frame_vptr);
-    tcb.set_register(NextIP, ui_v_entry);
+    tcb.tcbArch.set_register(capRegister, bi_frame_vptr);
+    tcb.tcbArch.set_register(NextIP, ui_v_entry);
     tcb.tcbMCP = seL4_MaxPrio;
     tcb.tcbPriority = seL4_MaxPrio;
     set_thread_state(tcb, ThreadState::ThreadStateRunning);

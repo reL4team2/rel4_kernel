@@ -20,8 +20,8 @@ use crate::syscall::{handle_fault, lookup_extra_caps_with_buf};
 #[no_mangle]
 pub fn handleInvocation(isCall: bool, isBlocking: bool) -> exception_t {
     let thread = get_currenct_thread();
-    let info = seL4_MessageInfo_t::from_word_security(thread.get_register(msgInfoRegister));
-    let cptr = thread.get_register(capRegister);
+    let info = seL4_MessageInfo_t::from_word_security(thread.tcbArch.get_register(msgInfoRegister));
+    let cptr = thread.tcbArch.get_register(capRegister);
     let lu_ret = thread.lookup_slot(cptr);
     if unlikely(lu_ret.status != exception_t::EXCEPTION_NONE) {
         debug!("Invocation of invalid cap {:#x}.", cptr);

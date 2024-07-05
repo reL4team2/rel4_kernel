@@ -156,7 +156,7 @@ fn handle_reply() {
 
 fn handle_recv(block: bool) {
     let current_thread = get_currenct_thread();
-    let ep_cptr = current_thread.get_register(capRegister);
+    let ep_cptr = current_thread.tcbArch.get_register(capRegister);
     let lu_ret = current_thread.lookup_slot(ep_cptr);
     if lu_ret.status != exception_t::EXCEPTION_NONE {
         unsafe {

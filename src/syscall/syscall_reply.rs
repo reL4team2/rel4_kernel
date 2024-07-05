@@ -7,10 +7,10 @@ use sel4_task::tcb_t;
 
 #[inline]
 pub fn reply_error_from_kernel(thread: &mut tcb_t) {
-    thread.set_register(badgeRegister, 0);
+    thread.tcbArch.set_register(badgeRegister, 0);
     unsafe {
         let len = set_mrs_for_syscall_error(thread);
-        thread.set_register(
+        thread.tcbArch.set_register(
             msgInfoRegister,
             seL4_MessageInfo_t::new(current_syscall_error._type, 0, 0, len).to_word(),
         );
@@ -19,8 +19,8 @@ pub fn reply_error_from_kernel(thread: &mut tcb_t) {
 
 #[inline]
 pub fn reply_success_from_kernel(thread: &mut tcb_t) {
-    thread.set_register(badgeRegister, 0);
-    thread.set_register(
+    thread.tcbArch.set_register(badgeRegister, 0);
+    thread.tcbArch.set_register(
         msgInfoRegister,
         seL4_MessageInfo_t::new(0, 0, 0, 0).to_word(),
     );
