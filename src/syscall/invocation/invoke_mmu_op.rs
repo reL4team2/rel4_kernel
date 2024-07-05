@@ -35,14 +35,20 @@ pub fn invoke_page_table_map(
     vaddr: usize,
 ) -> exception_t {
     let paddr = pptr_to_paddr(pt_cap.get_pt_base_ptr());
-    let pte = pte_t::new(paddr >> seL4_PageBits, PTEFlags::V);
+    #[cfg(target_arch = "riscv64")]
+    {
+        let pte = pte_t::new(paddr >> seL4_PageBits, PTEFlags::V);
+        *pt_slot = pte;
+    }
+    if cfg!(target_arch = "aarch64") {
+        todo!();
+    }
     pt_cap.set_pt_is_mapped(1);
     pt_cap.set_pt_mapped_asid(asid);
     pt_cap.set_pt_mapped_address(vaddr);
-    *pt_slot = pte;
-    #[cfg(target_arch="riscv64")]
+    #[cfg(target_arch = "riscv64")]
     sfence();
-    #[cfg(target_arch="aarch64")]
+    #[cfg(target_arch = "aarch64")]
     todo!();
     exception_t::EXCEPTION_NONE
 }
@@ -134,7 +140,7 @@ pub fn invoke_asid_pool(
     vspace_slot.cap.set_pt_is_mapped(1);
     vspace_slot.cap.set_pt_mapped_address(0);
     vspace_slot.cap.set_pt_mapped_asid(asid);
-    
+
     copyGlobalMappings(region_base);
     pool.set_vspace_by_index(asid & MASK!(asidLowBits), region_base);
     exception_t::EXCEPTION_NONE

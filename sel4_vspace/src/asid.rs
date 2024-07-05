@@ -1,8 +1,12 @@
-#[cfg(target_arch = "riscv64")]
-use crate::arch::hwASIDFlush;
-use crate::{arch::set_vm_root, findVSpaceForASID_ret};
+use core::{arch::asm, intrinsics::unlikely};
+
+use crate::{arch::set_vm_root, findVSpaceForASID_ret, pptr_t};
 use sel4_common::{
-    fault::lookup_fault_t, sel4_config::{asidHighBits, asidLowBits, IT_ASID}, structures::exception_t, BIT, MASK
+    fault::lookup_fault_t,
+    sel4_config::{asidHighBits, asidLowBits, IT_ASID},
+    structures::exception_t,
+    utils::convert_to_option_mut_type_ref,
+    BIT, MASK,
 };
 use sel4_cspace::interface::cap_t;
 
@@ -37,6 +41,8 @@ pub fn delete_asid(
         if poolPtr as usize != 0 && (*poolPtr).array[asid & MASK!(asidLowBits)] == vspace {
             #[cfg(target_arch = "riscv64")]
             hwASIDFlush(asid);
+            #[cfg(target_arch = "aarch64")]
+            todo!();
             (*poolPtr).array[asid & MASK!(asidLowBits)] = 0 as *mut pte_t;
             set_vm_root(&default_vspace_cap)
         } else {
@@ -63,7 +69,6 @@ pub fn delete_asid_pool(
         }
     }
 }
-
 
 ///根据给定的`asid`在`riscvKSASIDTable`中寻找对应的虚拟地址空间页表基址
 ///
@@ -94,4 +99,40 @@ pub fn find_vspace_for_asid(asid: asid_t) -> findVSpaceForASID_ret {
     ret.status = exception_t::EXCEPTION_NONE;
     // vspace_root0xffffffc17fec1000
     return ret;
+}
+
+/// `riscvKSASIDSpace`寻找对应`index`的`asid pool`
+///
+/// From `riscvKSASIDSpace` get the index-relevant asid pool.
+#[inline]
+pub fn get_asid_pool_by_index(index: usize) -> Option<&'static mut asid_pool_t> {
+    unsafe {
+        if unlikely(index >= BIT!(asidHighBits)) {
+            return None;
+        }
+        return convert_to_option_mut_type_ref::<asid_pool_t>(riscvKSASIDTable[index] as usize);
+    }
+}
+
+/// `riscvKSASIDSpace`设置对应`index`的`asid pool`
+///
+/// From `riscvKSASIDSpace` set the index-relevant asid pool.
+pub fn set_asid_pool_by_index(index: usize, pool_ptr: pptr_t) {
+    // assert!(index < BIT!(asidHighBits));
+    unsafe {
+        riscvKSASIDTable[index] = pool_ptr as *mut asid_pool_t;
+    }
+}
+
+#[no_mangle]
+pub fn findVSpaceForASID(_asid: asid_t) -> findVSpaceForASID_ret {
+    panic!("should not be invoked!")
+}
+
+///清除`TLB`中对应`asid`的项
+#[inline]
+pub fn hwASIDFlush(asid: asid_t) {
+    unsafe {
+        asm!("sfence.vma x0, {0}",in(reg) asid);
+    }
 }

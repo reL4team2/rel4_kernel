@@ -23,6 +23,10 @@ pub struct lookupPTSlot_ret_t {
 }
 
 impl pte_t {
+    #[inline]
+    pub fn get_ptr(&self) -> usize {
+        self as *const Self as usize
+    }
     ///用于记录某个虚拟地址`vptr`对应的pte表项在内存中的位置
     pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
         #[cfg(target_arch = "riscv64")]

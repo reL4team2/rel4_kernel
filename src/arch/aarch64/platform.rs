@@ -1,7 +1,7 @@
 use aarch64_cpu::registers::Writeable;
 use aarch64_cpu::registers::{TPIDR_EL1, VBAR_EL1};
 use core::arch::asm;
-use sel4_common::sel4_config::CONFIG_KERNEL_STACK_BITS;
+use sel4_common::sel4_config::{CONFIG_KERNEL_STACK_BITS, PADDR_TOP};
 use sel4_common::utils::cpu_id;
 
 use super::ffi::*;
@@ -76,10 +76,14 @@ pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
             debug!("ERROR: no slot to add the user image to the reserved regions");
             return false;
         }
-        res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
+        unsafe {
+            res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
+        }
         index += 1;
     } else {
-        reserve_region(ui_p_reg);
+        unsafe {
+            reserve_region(ui_p_reg);
+        }
     }
 
     unsafe { rust_init_freemem(avail_p_regs_size, avail_p_regs_addr, index, res_reg.clone()) }

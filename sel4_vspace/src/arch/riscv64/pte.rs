@@ -46,10 +46,6 @@ impl From<usize> for pte_t {
 
 impl pte_t {
     #[inline]
-    pub fn get_ptr(&self) -> usize {
-        self as *const Self as usize
-    }
-    #[inline]
     pub fn new(ppn: usize, flags: PTEFlags) -> Self {
         Self(flags.bits() | (ppn << 10))
     }

@@ -9,6 +9,7 @@ pub mod interface;
 mod pagetable;
 mod pte;
 mod structures;
+mod utils;
 
 #[cfg(target_arch = "aarch64")]
 pub use arch::aarch64::*;
@@ -19,4 +20,5 @@ pub use interface::unmapPage;
 pub use pagetable::PageTable;
 pub use pte::pte_t;
 pub use structures::*;
+pub use utils::checkVPAlignment;
 // pub use riscv::*;

@@ -62,10 +62,3 @@ pub fn pptr_to_paddr(x: usize) -> usize {
 pub fn paddr_to_pptr(x: usize) -> usize {
     x + PPTR_BASE_OFFSET
 }
-
-///检查页表是否按照4KB对齐
-#[inline]
-#[no_mangle]
-pub fn checkVPAlignment(sz: usize, w: usize) -> bool {
-    w & MASK!(pageBitsForSize(sz)) == 0
-}
