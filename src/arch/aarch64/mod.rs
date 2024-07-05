@@ -7,7 +7,7 @@ pub mod arm_gic;
 
 use crate::config::RESET_CYCLES;
 pub use c_traps::restore_user_context;
-pub use platform::init_cpu;
+pub use platform::{cleanInvalidateL1Caches, init_cpu, init_freemem, invalidateLocalTLB};
 use sel4_common::arch::set_timer;
 
 pub fn read_stval() -> usize {

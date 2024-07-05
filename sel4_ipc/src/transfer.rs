@@ -3,11 +3,11 @@ use core::intrinsics::likely;
 use super::endpoint::*;
 use super::notification::*;
 
-use sel4_common::fault::*;
-use sel4_common::message_info::*;
-use sel4_common::registers::{
+use sel4_common::arch::{
     badgeRegister, msgInfoRegister, n_exceptionMessage, n_syscallMessage, FaultIP,
 };
+use sel4_common::fault::*;
+use sel4_common::message_info::*;
 use sel4_common::sel4_config::*;
 use sel4_common::structures::*;
 use sel4_common::utils::*;
@@ -15,6 +15,7 @@ use sel4_cspace::interface::*;
 use sel4_task::{possible_switch_to, set_thread_state, tcb_t, ThreadState};
 use sel4_vspace::pptr_t;
 
+/// The trait for IPC transfer, please see doc.md for more details
 pub trait Transfer {
     fn cancel_ipc(&mut self);
 
@@ -174,7 +175,7 @@ impl Transfer for tcb_t {
     fn do_fault_transfer(&self, receiver: &mut tcb_t, badge: usize) {
         let sent = match self.tcbFault.get_fault_type() {
             FaultType::CapFault => {
-                receiver.set_mr(seL4_CapFault_IP, self.get_register(FaultIP));
+                receiver.set_mr(seL4_CapFault_IP, self.tcbArch.get_register(FaultIP));
                 receiver.set_mr(seL4_CapFault_Addr, self.tcbFault.cap_fault_get_address());
                 receiver.set_mr(
                     seL4_CapFault_InRecvPhase,
@@ -202,7 +203,7 @@ impl Transfer for tcb_t {
                 )
             }
             FaultType::VMFault => {
-                receiver.set_mr(seL4_VMFault_IP, self.get_register(FaultIP));
+                receiver.set_mr(seL4_VMFault_IP, self.tcbArch.get_register(FaultIP));
                 receiver.set_mr(seL4_VMFault_Addr, self.tcbFault.vm_fault_get_address());
                 receiver.set_mr(
                     seL4_VMFault_PrefetchFault,
@@ -215,8 +216,10 @@ impl Transfer for tcb_t {
             }
         };
         let msg_info = seL4_MessageInfo_t::new(self.tcbFault.get_type(), 0, 0, sent);
-        receiver.set_register(msgInfoRegister, msg_info.to_word());
-        receiver.set_register(badgeRegister, badge);
+        receiver
+            .tcbArch
+            .set_register(msgInfoRegister, msg_info.to_word());
+        receiver.tcbArch.set_register(badgeRegister, badge);
     }
 
     fn do_normal_transfer(
@@ -226,7 +229,8 @@ impl Transfer for tcb_t {
         badge: usize,
         can_grant: bool,
     ) {
-        let mut tag = seL4_MessageInfo_t::from_word_security(self.get_register(msgInfoRegister));
+        let mut tag =
+            seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(msgInfoRegister));
         let mut current_extra_caps = [0; seL4_MsgMaxExtraCaps];
         if can_grant {
             let _ = self.lookup_extra_caps(&mut current_extra_caps);
@@ -234,12 +238,15 @@ impl Transfer for tcb_t {
         let msg_transferred = self.copy_mrs(receiver, tag.get_length());
         receiver.set_transfer_caps(endpoint, &mut tag, &current_extra_caps);
         tag.set_length(msg_transferred);
-        receiver.set_register(msgInfoRegister, tag.to_word());
-        receiver.set_register(badgeRegister, badge);
+        receiver
+            .tcbArch
+            .set_register(msgInfoRegister, tag.to_word());
+        receiver.tcbArch.set_register(badgeRegister, badge);
     }
 
     fn do_fault_reply_transfer(&self, receiver: &mut tcb_t) -> bool {
-        let tag = seL4_MessageInfo_t::from_word_security(self.get_register(msgInfoRegister));
+        let tag =
+            seL4_MessageInfo_t::from_word_security(self.tcbArch.get_register(msgInfoRegister));
         let label = tag.get_label();
         let length = tag.get_length();
         match receiver.tcbFault.get_fault_type() {
@@ -268,7 +275,8 @@ impl Transfer for tcb_t {
             convert_to_option_mut_type_ref::<notification_t>(self.tcbBoundNotification)
         {
             if likely(ntfn.get_state() == NtfnState::Active) {
-                self.set_register(badgeRegister, ntfn.get_msg_identifier());
+                self.tcbArch
+                    .set_register(badgeRegister, ntfn.get_msg_identifier());
                 ntfn.set_state(NtfnState::Idle as usize);
                 return true;
             }

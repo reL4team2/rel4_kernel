@@ -1,3 +1,4 @@
+//! This module contains the configuration settings for sel4_common.
 use crate::{BIT, MASK};
 
 pub const wordRadix: usize = 6;
@@ -17,9 +18,17 @@ pub const RISCV_Mega_Page: usize = 1;
 pub const RISCV_Giga_Page: usize = 2;
 pub const RISCV_Tera_Page: usize = 3;
 
+pub const ARM_Small_Page: usize = 0;
+pub const ARM_Large_Page: usize = 1;
+pub const ARM_Huge_Page: usize = 2;
+
 pub const RISCVPageBits: usize = 12;
 pub const RISCVMegaPageBits: usize = 21;
 pub const RISCVGigaPageBits: usize = 30;
+
+pub const ARMSmallPageBits: usize = 12;
+pub const ARMLargePageBits: usize = 21;
+pub const ARMHugePageBits: usize = 30;
 
 pub const PT_INDEX_BITS: usize = 9;
 pub const CONFIG_PT_LEVELS: usize = 3;

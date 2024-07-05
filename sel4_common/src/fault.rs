@@ -1,3 +1,22 @@
+//! This module defines fault types and related constants for the seL4 microkernel.
+//! It provides bitfield definitions for different fault types, such as NullFault, CapFault,
+//! UnknownSyscall, UserException, and VMFault.
+//!
+//! The `FaultType` enum represents the different fault types, and the `seL4_Fault_t` struct
+//! provides methods to get the fault type.
+//!
+//! The module also defines constants for specific fault types, such as `seL4_Fault_NullFault`,
+//! `seL4_Fault_CapFault`, `seL4_Fault_UnknownSyscall`, `seL4_Fault_UserException`, and `seL4_Fault_VMFault`.
+//!
+//! Additionally, it defines constants for specific fields in the `seL4_VMFault_Msg` and `seL4_CapFault_Msg` structs.
+//! 
+//! The `LookupFaultType` enum represents different types of lookup faults, such as InvalidRoot,
+//! MissingCap, DepthMismatch, and GuardMismatch. The `lookup_fault_t` struct provides methods
+//! to get the lookup fault type.
+//! 
+//! The module also defines constants for specific lookup fault types, such as `lookup_fault_invalid_root`,
+//! `lookup_fault_missing_capability`, `lookup_fault_depth_mismatch`, and `lookup_fault_guard_mismatch`.
+//!
 use crate::plus_define_bitfield;
 
 plus_define_bitfield! {

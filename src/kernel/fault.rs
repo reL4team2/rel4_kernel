@@ -1,4 +1,4 @@
-use sel4_common::registers::n_syscallMessage;
+use sel4_common::arch::n_syscallMessage;
 use sel4_task::*;
 
 #[no_mangle]

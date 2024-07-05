@@ -1,4 +1,4 @@
-use sel4_common::registers::msgInfoRegister;
+use sel4_common::arch::msgInfoRegister;
 use sel4_common::utils::MAX_FREE_INDEX;
 use sel4_common::MASK;
 use sel4_common::{
@@ -56,9 +56,9 @@ pub fn invoke_page_table_map(
 pub fn invoke_page_get_address(vbase_ptr: usize, call: bool) -> exception_t {
     let thread = get_currenct_thread();
     if call {
-        thread.set_register(badgeRegister, 0);
+        thread.tcbArch.set_register(badgeRegister, 0);
         let length = thread.set_mr(0, vbase_ptr);
-        thread.set_register(
+        thread.tcbArch.set_register(
             msgInfoRegister,
             seL4_MessageInfo_t::new(0, 0, 0, length).to_word(),
         );
