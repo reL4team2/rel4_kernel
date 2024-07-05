@@ -72,7 +72,7 @@ pub fn init_freemem(ui_reg: region_t, dtb_p_reg: p_region_t) -> bool {
     // but in aarch64, the array size is always 0
     // so eliminate some code
     if ui_reg.start < PADDR_TOP {
-        if (index >= NUM_RESERVED_REGIONS) {
+        if index >= NUM_RESERVED_REGIONS {
             debug!("ERROR: no slot to add the user image to the reserved regions");
             return false;
         }

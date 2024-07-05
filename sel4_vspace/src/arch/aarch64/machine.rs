@@ -56,3 +56,27 @@ pub fn dmb() {
         asm!("dmb", options(nostack, preserves_flags));
     }
 }
+
+
+
+// pub fn cleanInvalidateL1Caches()
+// {
+//     dsb();
+//     cleanInvalidate_D_PoC();
+//     dsb();
+//     invalidate_I_PoU();
+//     dsb();
+// }
+
+
+// void cleanInvalidate_D_PoC(void)
+// {
+//     int clid = readCLID();
+//     int loc = LOC(clid);
+
+//     for (int l = 0; l < loc; l++) {
+//         if (CTYPE(clid, l) > ARMCacheI) {
+//             cleanInvalidate_D_by_level(l);
+//         }
+//     }
+// }

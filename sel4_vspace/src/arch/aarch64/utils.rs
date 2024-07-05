@@ -21,11 +21,6 @@ pub fn GET_UPT_INDEX(addr: usize, n: usize) -> usize {
 }
 
 #[inline]
-pub fn pte_pte_table_new(base_addr: usize) -> pte_t {
-    pte_t(base_addr & 0xfffffffff000 | 0x3)
-}
-
-#[inline]
 pub fn kpptr_to_paddr(x: usize) -> usize {
     x - KERNEL_ELF_BASE_OFFSET
 }

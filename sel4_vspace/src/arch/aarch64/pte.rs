@@ -3,7 +3,7 @@ use core::intrinsics::unlikely;
 use crate::{
     arch::aarch64::{
         machine::{clean_by_va_pou, invalidate_local_tlb_asid},
-        structures::vm_rights_t,
+        vm_rights::vm_rights_t,
     },
     asid_t, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t, vptr_t,
 };
@@ -129,8 +129,7 @@ impl pte_t {
         );
     }
 
-    pub fn ap_from_vm_rights_t(rights: usize) -> PTEFlags {
-        let rights = unsafe { core::mem::transmute(rights) };
+    pub fn ap_from_vm_rights_t(rights: vm_rights_t) -> PTEFlags {
         match rights {
             vm_rights_t::VMKernelOnly => PTEFlags::empty(),
             vm_rights_t::VMReadWrite => PTEFlags::AP_EL0,
@@ -140,7 +139,7 @@ impl pte_t {
 
     pub fn make_user_pte(
         paddr: usize,
-        rights: usize,
+        rights: vm_rights_t,
         attr: vm_attributes_t,
         page_size: usize,
     ) -> Self {
@@ -153,6 +152,7 @@ impl pte_t {
         if nonexecutable {
             flags |= PTEFlags::UXN;
         }
+        flags |= Self::ap_from_vm_rights_t(rights);
         if vm_page_size::ARMSmallPage as usize == page_size {
             pte_t::new_4k_page(paddr, flags)
         } else {

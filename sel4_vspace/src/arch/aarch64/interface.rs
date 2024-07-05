@@ -14,7 +14,7 @@ use sel4_common::{
 };
 use sel4_cspace::interface::{cap_t, CapTag};
 
-use super::utils::{kpptr_to_paddr, pte_pte_table_new, GET_KPT_INDEX};
+use super::utils::{kpptr_to_paddr, GET_KPT_INDEX};
 
 #[no_mangle]
 #[link_section = ".page_table"]
@@ -42,7 +42,7 @@ pub(crate) static mut armKSGlobalKernelPT: [pte_t; BIT!(PT_INDEX_BITS)] =
     [pte_t(0); BIT!(PT_INDEX_BITS)];
 
 #[no_mangle]
-fn rust_map_kernel_window() {
+pub fn rust_map_kernel_window() {
     unsafe {
         armKSGlobalKernelPGD[GET_KPT_INDEX(PPTR_BASE, 0)] =
             pte_t::pte_next_table(kpptr_to_paddr(armKSGlobalKernelPUD.as_ptr() as usize), true);
@@ -117,4 +117,8 @@ pub fn set_vm_root(vspace_root: &cap_t) -> Result<(), lookup_fault_t> {
     }
     setCurrentUserVSpaceRoot(ttbr_new(asid, pptr_to_paddr(lvl1pt as *mut pte_t as usize)));
     ret
+}
+
+pub fn activate_kernel_window(){
+    todo!()
 }

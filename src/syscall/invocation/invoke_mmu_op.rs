@@ -10,9 +10,11 @@ use sel4_common::{
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t, seL4_CapRights_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
-    asid_pool_t, copyGlobalMappings, maskVMRights, pptr_t, pptr_to_paddr, pte_t,
-    set_asid_pool_by_index, sfence, unmapPage, vm_attributes_t, PTEFlags,
+    asid_pool_t, maskVMRights, pptr_t, pptr_to_paddr, pte_t, set_asid_pool_by_index, unmapPage,
+    vm_attributes_t, PTEFlags,
 };
+#[cfg(target_arch = "riscv64")]
+use sel4_vspace::{copyGlobalMappings, sfence};
 
 use crate::{config::badgeRegister, kernel::boot::current_lookup_fault, utils::clear_memory};
 
@@ -38,7 +40,10 @@ pub fn invoke_page_table_map(
     pt_cap.set_pt_mapped_asid(asid);
     pt_cap.set_pt_mapped_address(vaddr);
     *pt_slot = pte;
+    #[cfg(target_arch="riscv64")]
     sfence();
+    #[cfg(target_arch="aarch64")]
+    todo!();
     exception_t::EXCEPTION_NONE
 }
 
@@ -84,13 +89,16 @@ pub fn invoke_page_map(
     pt_slot: &mut pte_t,
     frame_slot: &mut cte_t,
 ) -> exception_t {
-    let frame_vm_rights =unsafe{core::mem::transmute(frame_slot.cap.get_frame_vm_rights())};
+    let frame_vm_rights = unsafe { core::mem::transmute(frame_slot.cap.get_frame_vm_rights()) };
     let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights_t::from_word(w_rights_mask));
     let frame_addr = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     frame_slot.cap.set_frame_mapped_address(vaddr);
     frame_slot.cap.set_frame_mapped_asid(asid);
     let executable = attr.get_execute_never() == 0;
+    #[cfg(target_arch = "riscv64")]
     let pte = pte_t::make_user_pte(frame_addr, executable, vm_rights);
+    #[cfg(target_arch = "aarch64")]
+    let pte = pte_t::make_user_pte(frame_addr, vm_rights, attr, frame_slot.cap.get_frame_size());
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
     pt_slot.update(pte);
     exception_t::EXCEPTION_NONE
@@ -116,6 +124,7 @@ pub fn invoke_asid_control(
     exception_t::EXCEPTION_NONE
 }
 
+#[cfg(target_arch = "riscv64")]
 pub fn invoke_asid_pool(
     asid: usize,
     pool: &mut asid_pool_t,
@@ -125,7 +134,17 @@ pub fn invoke_asid_pool(
     vspace_slot.cap.set_pt_is_mapped(1);
     vspace_slot.cap.set_pt_mapped_address(0);
     vspace_slot.cap.set_pt_mapped_asid(asid);
+    
     copyGlobalMappings(region_base);
     pool.set_vspace_by_index(asid & MASK!(asidLowBits), region_base);
     exception_t::EXCEPTION_NONE
+}
+
+#[cfg(target_arch = "aarch64")]
+pub fn invoke_asid_pool(
+    asid: usize,
+    pool: &mut asid_pool_t,
+    vspace_slot: &mut cte_t,
+) -> exception_t {
+    todo!()
 }

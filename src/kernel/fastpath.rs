@@ -78,7 +78,10 @@ pub fn endpoint_ptr_mset_epQueue_tail_state(ptr: *mut endpoint_t, tail: usize, s
 pub fn switchToThread_fp(thread: *mut tcb_t, vroot: *mut pte_t, stored_hw_asid: pte_t) {
     let asid = stored_hw_asid.0;
     unsafe {
+        #[cfg(target_arch = "riscv64")]
         setVSpaceRoot(pptr_to_paddr(vroot as usize), asid);
+        #[cfg(target_arch = "aarch64")]
+        setCurrentUserVSpaceRoot(ttbr_new(asid, pptr_to_paddr(vroot as usize)));
         // panic!("switchToThread_fp");
         // ksCurThread = thread as usize;
         set_current_thread(&*thread);
