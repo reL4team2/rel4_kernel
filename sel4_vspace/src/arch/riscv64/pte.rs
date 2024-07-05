@@ -1,104 +1,86 @@
+use bitflags::bitflags;
 use core::intrinsics::unlikely;
-use sel4_common::sel4_config::{
-    seL4_PageBits, seL4_PageTableBits, CONFIG_PT_LEVELS, PT_INDEX_BITS,
+
+use sel4_common::{
+    sel4_config::{seL4_PageBits, seL4_PageTableBits, CONFIG_PT_LEVELS},
+    structures::exception_t,
+    utils::{convert_to_mut_type_ref, convert_to_type_ref},
+    BIT,
 };
-use sel4_common::structures::exception_t;
-use sel4_common::utils::{convert_to_mut_type_ref, convert_to_type_ref};
-use sel4_common::MASK;
 
-use super::satp::sfence;
-use crate::asid::{asid_t, find_vspace_for_asid};
-use crate::structures::vptr_t;
-use crate::utils::{paddr_to_pptr, RISCV_GET_PT_INDEX};
-use crate::vm_rights::{RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights};
+use crate::{
+    arch::riscv64::{sfence, utils::RISCV_GET_PT_INDEX},
+    asid_t, find_vspace_for_asid, pte_t, vptr_t,
+};
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct pte_t {
-    pub words: [usize; 1],
+use super::{
+    paddr_to_pptr,
+    vm_rights::{vm_rights_t, RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights},
+};
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct PTEFlags: usize {
+        const V = BIT!(0);
+        const R = BIT!(1);
+        const W = BIT!(2);
+        const X = BIT!(3);
+        const U = BIT!(4);
+        const G = BIT!(5);
+        const A = BIT!(6);
+        const D = BIT!(7);
+
+        const VRWX  = Self::V.bits() | Self::R.bits() | Self::W.bits() | Self::X.bits();
+        const ADUVRX = Self::A.bits() | Self::D.bits() | Self::U.bits() | Self::V.bits() | Self::R.bits() | Self::X.bits();
+        const ADVRWX = Self::A.bits() | Self::D.bits() | Self::VRWX.bits();
+        const ADUVRWX = Self::A.bits() | Self::D.bits()| Self::U.bits() | Self::VRWX.bits();
+        const ADGVRWX = Self::G.bits() | Self::ADVRWX.bits();
+    }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct lookupPTSlot_ret_t {
-    pub ptSlot: *mut pte_t,
-    pub ptBitsLeft: usize,
+impl From<usize> for pte_t {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
 }
 
 impl pte_t {
     #[inline]
-    pub fn get_ptr(&self) -> usize {
-        self as *const Self as usize
+    pub fn new(ppn: usize, flags: PTEFlags) -> Self {
+        Self(flags.bits() | (ppn << 10))
     }
 
+    /// 创建一个用户使用的页表项（`Global=0`、`User=1`）
     #[inline]
-    pub fn new(
-        ppn: usize,
-        sw: usize,
-        dirty: usize,
-        accessed: usize,
-        global: usize,
-        user: usize,
-        execute: usize,
-        write: usize,
-        read: usize,
-        valid: usize,
-    ) -> Self {
-        pte_t {
-            words: [0
-                | (ppn & 0xfffffffffffusize) << 10
-                | (sw & 0x3usize) << 8
-                | (dirty & 0x1usize) << 7
-                | (accessed & 0x1usize) << 6
-                | (global & 0x1usize) << 5
-                | (user & 0x1usize) << 4
-                | (execute & 0x1usize) << 3
-                | (write & 0x1usize) << 2
-                | (read & 0x1usize) << 1
-                | (valid & 0x1usize) << 0],
-        }
-    }
-
-    #[inline]
-    pub fn make_user_pte(paddr: usize, executable: bool, vm_rights: usize) -> Self {
-        let write = RISCVGetWriteFromVMRights(vm_rights);
-        let read = RISCVGetReadFromVMRights(vm_rights);
+    pub fn make_user_pte(paddr: usize, executable: bool, vm_rights: vm_rights_t) -> Self {
+        let write = RISCVGetWriteFromVMRights(&vm_rights);
+        let read = RISCVGetReadFromVMRights(&vm_rights);
         if !executable && !read && !write {
             return Self::pte_invalid();
         }
-        Self::new(
-            paddr >> seL4_PageBits,
-            0,                   /* sw */
-            1,                   /* dirty (leaf) */
-            1,                   /* accessed (leaf) */
-            0,                   /* global */
-            1,                   /* user (leaf) */
-            executable as usize, /* execute */
-            write as usize,      /* write */
-            read as usize,       /* read */
-            1,                   /* valid */
-        )
+        let mut flag = PTEFlags::V | PTEFlags::D | PTEFlags::A | PTEFlags::U;
+        if executable {
+            flag |= PTEFlags::X;
+        }
+        if write {
+            flag |= PTEFlags::W;
+        }
+        if read {
+            flag |= PTEFlags::R;
+        }
+        Self::new(paddr >> seL4_PageBits, flag)
     }
 
+    ///创建内核态页表项（`Global=1`、`User=0`）
     #[inline]
-    pub fn pte_next(phys_addr: usize, is_leaf: bool) -> Self {
+    pub fn pte_next_table(phys_addr: usize, is_leaf: bool) -> Self {
         let ppn = (phys_addr >> 12) as usize;
 
-        let read = is_leaf as u8;
-        let write = read;
-        let exec = read;
-        Self::new(
-            ppn,
-            0,
-            is_leaf as usize,
-            is_leaf as usize,
-            1,
-            0,
-            exec as usize,
-            write as usize,
-            read as usize,
-            1,
-        )
+        let mut flag = PTEFlags::V | PTEFlags::G;
+        if is_leaf {
+            flag |= PTEFlags::X | PTEFlags::W | PTEFlags::R | PTEFlags::A | PTEFlags::D;
+        }
+        Self::new(ppn, flag)
     }
 
     #[inline]
@@ -129,18 +111,19 @@ impl pte_t {
         if pt != target_pt {
             return;
         }
-        *ptSlot = pte_t::new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        *ptSlot = pte_t::new(0, PTEFlags::empty());
         sfence();
     }
 
     #[inline]
-    pub fn pte_invalid() -> Self {
-        pte_t { words: [0] }
+    pub const fn pte_invalid() -> Self {
+        Self(0)
     }
 
+    ///判断是页目录节点还是叶子节点，当`valid`置1，`read``write``exec`置0时，代表为叶子节点
     #[inline]
     pub fn is_pte_table(&self) -> bool {
-        self.get_vaild() != 0
+        self.get_valid() != 0
             && !(self.get_read() != 0 || self.get_write() != 0 || self.get_execute() != 0)
     }
 
@@ -154,47 +137,28 @@ impl pte_t {
         convert_to_type_ref::<pte_t>(paddr_to_pptr(self.get_ppn() << seL4_PageTableBits))
     }
 
-    pub fn lookup_pt_slot(&self, vptr: vptr_t) -> lookupPTSlot_ret_t {
-        let mut level = CONFIG_PT_LEVELS - 1;
-        let mut pt = self as *const pte_t as usize as *mut pte_t;
-        let mut ret = lookupPTSlot_ret_t {
-            ptBitsLeft: PT_INDEX_BITS * level + seL4_PageBits,
-            ptSlot: unsafe {
-                pt.add((vptr >> (PT_INDEX_BITS * level + seL4_PageBits)) & MASK!(PT_INDEX_BITS))
-            },
-        };
-
-        while unsafe { (*ret.ptSlot).is_pte_table() } && level > 0 {
-            level -= 1;
-            ret.ptBitsLeft -= PT_INDEX_BITS;
-            pt = unsafe { (*ret.ptSlot).get_pte_from_ppn_mut() as *mut pte_t };
-            ret.ptSlot = unsafe { pt.add((vptr >> ret.ptBitsLeft) & MASK!(PT_INDEX_BITS)) };
-        }
-        ret
-    }
-
     #[inline]
-    pub fn get_vaild(&self) -> usize {
-        (self.words[0] & 0x1) >> 0
+    pub fn get_valid(&self) -> usize {
+        (self.0 & 0x1) >> 0
     }
 
     #[inline]
     pub fn get_ppn(&self) -> usize {
-        (self.words[0] & 0x3f_ffff_ffff_fc00usize) >> 10
+        (self.0 & 0x3f_ffff_ffff_fc00usize) >> 10
     }
 
     #[inline]
     pub fn get_execute(&self) -> usize {
-        (self.words[0] & 0x8usize) >> 3
+        (self.0 & 0x8usize) >> 3
     }
 
     #[inline]
     pub fn get_write(&self) -> usize {
-        (self.words[0] & 0x4usize) >> 2
+        (self.0 & 0x4usize) >> 2
     }
 
     #[inline]
     pub fn get_read(&self) -> usize {
-        (self.words[0] & 0x2usize) >> 1
+        (self.0 & 0x2usize) >> 1
     }
 }

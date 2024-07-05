@@ -1,8 +1,7 @@
-use crate::structures::paddr_t;
 use riscv::register::satp;
-#[cfg(feature = "ENABLE_SMP")]
-use sel4_common::arch::remote_sfence_vma;
 
+
+///`satp`寄存器对应的内存备份
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct satp_t {
@@ -41,6 +40,9 @@ pub fn sfence_local() {
     }
 }
 
+///对汇编指令`sfence.vma`的简单封装，清空`cache`、`tlb`
+/// 
+/// Risc-v's sfence.vma 
 #[cfg(not(feature = "ENABLE_SMP"))]
 #[inline]
 pub fn sfence() {
@@ -50,9 +52,12 @@ pub fn sfence() {
     }
 }
 
+///设置页表，创建一个新的satp的值，然后将其写入satp寄存器
+/// 
+/// Assign addr to satp.
 #[inline]
 #[no_mangle]
-pub fn setVSpaceRoot(addr: paddr_t, asid: usize) {
+pub fn setVSpaceRoot(addr: usize, asid: usize) {
     let satp = satp_t::new(8usize, asid, addr >> 12);
     satp::write(satp.words);
     #[cfg(not(feature = "ENABLE_SMP"))]

@@ -315,7 +315,7 @@ fn decode_frame_map(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
         } else {
-            if pt_slot.get_vaild() != 0 {
+            if pt_slot.get_valid() != 0 {
                 debug!("Virtual address already mapped");
                 unsafe {
                     current_syscall_error._type = seL4_DeleteFirst;
@@ -404,7 +404,7 @@ fn decode_page_table_map(
     if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
         let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
         let lu_slot = convert_to_mut_type_ref::<pte_t>(lu_ret.ptSlot as usize);
-        if lu_ret.ptBitsLeft == seL4_PageBits || lu_slot.get_vaild() != 0 {
+        if lu_ret.ptBitsLeft == seL4_PageBits || lu_slot.get_valid() != 0 {
             debug!("RISCVPageTableMap: All objects mapped at this address");
             unsafe {
                 current_syscall_error._type = seL4_DeleteFirst;

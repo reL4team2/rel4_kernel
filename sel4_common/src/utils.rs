@@ -103,6 +103,11 @@ pub fn MAX_FREE_INDEX(bits: usize) -> usize {
 }
 
 #[inline]
+pub fn convert_ref_type_to_usize<T>(addr: &mut T) -> usize {
+    addr as *mut T as usize
+}
+
+#[inline]
 pub fn convert_to_type_ref<T>(addr: usize) -> &'static T {
     assert_ne!(addr, 0);
     unsafe { &*(addr as *mut T) }
