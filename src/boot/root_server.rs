@@ -526,7 +526,14 @@ pub fn rust_create_mapped_it_frame_cap(
     } else {
         frame_size = RISCVPageBits;
     }
-    let cap = cap_t::new_frame_cap(asid, pptr, frame_size, VMReadWrite, 0, vptr);
+    let cap = cap_t::new_frame_cap(
+        asid,
+        pptr,
+        frame_size,
+        vm_rights_t::VMReadWrite as usize,
+        0,
+        vptr,
+    );
     map_it_frame_cap(pd_cap, &cap);
     cap
 }

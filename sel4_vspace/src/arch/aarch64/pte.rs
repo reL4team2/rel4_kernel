@@ -1,10 +1,17 @@
 use core::intrinsics::unlikely;
 
 use crate::{
-    arch::aarch64::machine::{clean_by_va_pou, invalidate_local_tlb_asid}, asid_t, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t, vptr_t
+    arch::aarch64::{
+        machine::{clean_by_va_pou, invalidate_local_tlb_asid},
+        structures::vm_rights_t,
+    },
+    asid_t, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t, vptr_t,
 };
 use sel4_common::{
-    sel4_config::seL4_PageTableBits, structures::exception_t, utils::convert_to_mut_type_ref, BIT,
+    sel4_config::seL4_PageTableBits,
+    structures::exception_t,
+    utils::{convert_ref_type_to_usize, convert_to_mut_type_ref},
+    BIT,
 };
 
 use super::utils::{paddr_to_pptr, GET_UPT_INDEX};
@@ -72,7 +79,6 @@ bitflags::bitflags! {
         /// levels of lookup.
         const NS_TABLE =            BIT!(63);
 
-        const EMPTY = 0;
     }
 }
 
@@ -81,7 +87,7 @@ impl pte_t {
         Self((addr & 0xfffffffff000) | flags.bits())
     }
     pub fn pte_next_table(addr: usize, _: bool) -> Self {
-        Self::new(addr, PTEFlags::EMPTY)
+        Self::new(addr, PTEFlags::VALID | PTEFlags::NON_BLOCK)
     }
     fn new_4k_page(addr: usize, flags: PTEFlags) -> Self {
         Self((addr & 0xfffffffff000) | flags.bits() | 0x400000000000003)
@@ -111,10 +117,28 @@ impl pte_t {
     }
 
     pub fn new_invalid() -> Self {
-        Self::new(0, PTEFlags::EMPTY)
+        Self::new(0, PTEFlags::empty())
     }
 
-    pub fn makeUserPTE(
+    #[inline]
+    pub fn update(&mut self, pte: Self) {
+        *self = pte;
+        clean_by_va_pou(
+            convert_ref_type_to_usize(self),
+            convert_ref_type_to_usize(self),
+        );
+    }
+
+    pub fn ap_from_vm_rights_t(rights: usize) -> PTEFlags {
+        let rights = unsafe { core::mem::transmute(rights) };
+        match rights {
+            vm_rights_t::VMKernelOnly => PTEFlags::empty(),
+            vm_rights_t::VMReadWrite => PTEFlags::AP_EL0,
+            vm_rights_t::VMReadOnly => PTEFlags::AP_EL0 | PTEFlags::AP_RO,
+        }
+    }
+
+    pub fn make_user_pte(
         paddr: usize,
         rights: usize,
         attr: vm_attributes_t,
@@ -156,11 +180,13 @@ impl pte_t {
         }
 
         if pt != target_pt {
-            /* didn't find it */
             return;
         }
         *ptSlot = pte_t::new_invalid();
         invalidate_local_tlb_asid(asid);
-        clean_by_va_pou(ptSlot as usize, pptr_to_paddr(ptSlot))
+        clean_by_va_pou(
+            convert_ref_type_to_usize(ptSlot),
+            pptr_to_paddr(convert_ref_type_to_usize(ptSlot)),
+        )
     }
 }

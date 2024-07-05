@@ -37,20 +37,25 @@ pub(crate) static mut armKSGlobalUserVSpace: [pte_t; BIT!(PT_INDEX_BITS)] =
     [pte_t(0); BIT!(PT_INDEX_BITS)];
 
 #[no_mangle]
+#[link_section = ".page_table"]
+pub(crate) static mut armKSGlobalKernelPT: [pte_t; BIT!(PT_INDEX_BITS)] =
+    [pte_t(0); BIT!(PT_INDEX_BITS)];
+
+#[no_mangle]
 fn rust_map_kernel_window() {
     unsafe {
         armKSGlobalKernelPGD[GET_KPT_INDEX(PPTR_BASE, 0)] =
-            pte_pte_table_new(kpptr_to_paddr(armKSGlobalKernelPUD.as_ptr() as usize));
+            pte_t::pte_next_table(kpptr_to_paddr(armKSGlobalKernelPUD.as_ptr() as usize), true);
     }
 
     let mut idx = GET_KPT_INDEX(PPTR_BASE, 1);
     while idx < GET_KPT_INDEX(PPTR_TOP, 1) {
-        todo!();
-        // unsafe {
-        //     armKSGlobalKernelPUD[idx] = pte_pte_table_new(kpptr_to_paddr(
-        //         armKSGlobalKernelPDs[idx][0].0.as_ptr() as usize,
-        //     ));
-        // }
+        unsafe {
+            armKSGlobalKernelPUD[idx] = pte_t::pte_next_table(
+                kpptr_to_paddr(armKSGlobalKernelPDs[idx].as_ptr() as usize),
+                true,
+            );
+        }
         idx += 1;
     }
 
@@ -67,11 +72,12 @@ fn rust_map_kernel_window() {
     }
 
     unsafe {
-        todo!()
-        // armKSGlobalKernelPUD[GET_KPT_INDEX(PPTR_TOP, 1)] = pte_t::pte_next_table(
-        //     kpptr_to_paddr(armKSGlobalKernelPDs[BIT!(PT_INDEX_BITS) - 1][0].0.as_ptr() as usize),
-        //     true,
-        // );
+        armKSGlobalKernelPUD[GET_KPT_INDEX(PPTR_TOP, 1)] = pte_t::pte_next_table(
+            kpptr_to_paddr(armKSGlobalKernelPDs[BIT!(PT_INDEX_BITS) - 1].as_ptr() as usize),
+            true,
+        );
+        armKSGlobalKernelPDs[BIT!(PT_INDEX_BITS) - 1][BIT!(PT_INDEX_BITS) - 1] =
+            pte_t::pte_next_table(kpptr_to_paddr(armKSGlobalKernelPT.as_ptr() as usize), true);
     }
 
     //FIXME:: map_kernel_window not implemented;

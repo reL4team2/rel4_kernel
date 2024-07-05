@@ -8,7 +8,7 @@ use sel4_common::{
 };
 use sel4_cspace::interface::{cap_t, cte_t, insert_new_cap};
 use sel4_task::{get_current_domain, tcb_t};
-use sel4_vspace::{pptr_t, VMReadWrite};
+use sel4_vspace::{pptr_t, vm_rights_t};
 
 use crate::utils::*;
 
@@ -68,7 +68,7 @@ fn create_object(
                 asidInvalid,
                 region_base,
                 obj_type.get_frame_type(),
-                VMReadWrite,
+                vm_rights_t::VMReadWrite as usize,
                 device_mem as usize,
                 0,
             )

@@ -21,9 +21,6 @@ pub type vptr_t = usize;
 /// 进程对应的asid所属的类型
 pub type asid_t = usize;
 
-pub const VMKernelOnly: usize = 1;
-pub const VMReadOnly: usize = 2;
-pub const VMReadWrite: usize = 3;
 
 #[repr(C)]
 #[derive(Copy, Clone)]

@@ -84,7 +84,7 @@ pub fn invoke_page_map(
     pt_slot: &mut pte_t,
     frame_slot: &mut cte_t,
 ) -> exception_t {
-    let frame_vm_rights = frame_slot.cap.get_frame_vm_rights();
+    let frame_vm_rights =unsafe{core::mem::transmute(frame_slot.cap.get_frame_vm_rights())};
     let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights_t::from_word(w_rights_mask));
     let frame_addr = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     frame_slot.cap.set_frame_mapped_address(vaddr);

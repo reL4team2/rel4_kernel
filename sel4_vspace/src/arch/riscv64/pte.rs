@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     paddr_to_pptr,
-    vm_rights::{RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights},
+    vm_rights::{vm_rights_t, RISCVGetReadFromVMRights, RISCVGetWriteFromVMRights},
 };
 
 bitflags! {
@@ -35,7 +35,6 @@ bitflags! {
         const ADVRWX = Self::A.bits() | Self::D.bits() | Self::VRWX.bits();
         const ADUVRWX = Self::A.bits() | Self::D.bits()| Self::U.bits() | Self::VRWX.bits();
         const ADGVRWX = Self::G.bits() | Self::ADVRWX.bits();
-        const EMPTY = 0;
     }
 }
 
@@ -57,9 +56,9 @@ impl pte_t {
 
     /// 创建一个用户使用的页表项（`Global=0`、`User=1`）
     #[inline]
-    pub fn make_user_pte(paddr: usize, executable: bool, vm_rights: usize) -> Self {
-        let write = RISCVGetWriteFromVMRights(vm_rights);
-        let read = RISCVGetReadFromVMRights(vm_rights);
+    pub fn make_user_pte(paddr: usize, executable: bool, vm_rights: vm_rights_t) -> Self {
+        let write = RISCVGetWriteFromVMRights(&vm_rights);
+        let read = RISCVGetReadFromVMRights(&vm_rights);
         if !executable && !read && !write {
             return Self::pte_invalid();
         }
@@ -116,7 +115,7 @@ impl pte_t {
         if pt != target_pt {
             return;
         }
-        *ptSlot = pte_t::new(0, PTEFlags::EMPTY);
+        *ptSlot = pte_t::new(0, PTEFlags::empty());
         sfence();
     }
 

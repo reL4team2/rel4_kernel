@@ -14,4 +14,4 @@ pub use utils::{
     checkVPAlignment, kpptr_to_paddr, paddr_to_pptr, pptr_to_paddr, RISCV_GET_LVL_PGSIZE,
     RISCV_GET_LVL_PGSIZE_BITS,
 };
-pub use vm_rights::maskVMRights;
+pub use vm_rights::{maskVMRights, vm_rights_t};

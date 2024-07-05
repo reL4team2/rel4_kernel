@@ -1,4 +1,5 @@
 use super::structures::paddr_t;
+use arch::vm_rights;
 use sel4_common::sel4_config::{
     seL4_PageBits, CONFIG_PT_LEVELS, KERNEL_ELF_BASE_OFFSET, PPTR_BASE_OFFSET, PT_INDEX_BITS,
 };
@@ -41,3 +42,5 @@ pub fn paddr_to_pptr(x: usize) -> paddr_t {
 pub fn checkVPAlignment(sz: usize, w: usize) -> bool {
     w & MASK!(pageBitsForSize(sz)) == 0
 }
+
+

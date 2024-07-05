@@ -248,9 +248,9 @@ pub fn mask_cap_rights(rights: seL4_CapRights_t, cap: &cap_t) -> cap_t {
             new_cap.set_reply_can_grant(cap.get_reply_can_grant() & rights.get_allow_grant());
         }
         CapTag::CapFrameCap => {
-            let mut vm_rights = cap.get_frame_vm_rights();
+            let mut vm_rights = unsafe { core::mem::transmute(cap.get_frame_vm_rights()) };
             vm_rights = maskVMRights(vm_rights, rights);
-            new_cap.set_frame_vm_rights(vm_rights);
+            new_cap.set_frame_vm_rights(vm_rights as usize);
         }
         _ => {}
     }
