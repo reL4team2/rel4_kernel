@@ -1,3 +1,5 @@
+use crate::arch::ArchReg;
+
 //     X0                          = 0,    /* 0x00 */
 pub(super) const capRegister: usize = 0;
 pub(super) const badgeRegister: usize = 0;
@@ -73,7 +75,6 @@ pub const gpRegisters: [usize; gpRegNum] = [
     9, 10, 11, 12, 13, 14, 15, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 35, 36,
 ];
 
-use crate::arch::ArchReg;
 impl ArchReg {
     /// Convert Enum to register index.
     pub const fn to_index(&self) -> usize {
