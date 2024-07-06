@@ -1,3 +1,5 @@
+use crate::arch::ArchReg;
+
 //     X0                          = 0,    /* 0x00 */
 pub(super) const capRegister: usize = 0;
 pub(super) const badgeRegister: usize = 0;
