@@ -7,7 +7,7 @@ use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
 use sel4_common::BIT;
 use sel4_common::MASK;
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t, mdb_node_t, resolve_address_bits, CapTag};
-use sel4_vspace::{pptr_t, set_vm_root, VMReadOnly, VMReadWrite};
+use sel4_vspace::{pptr_t, set_vm_root, vm_rights_t};
 
 use crate::tcb_queue::tcb_queue_t;
 use sel4_common::sel4_config::*;
@@ -420,8 +420,12 @@ impl tcb_t {
             return None;
         }
 
-        let vm_rights = buffer_cap.get_frame_vm_rights();
-        if likely(vm_rights == VMReadWrite || (!is_receiver && vm_rights == VMReadOnly)) {
+        let vm_rights: vm_rights_t =
+            unsafe { core::mem::transmute(buffer_cap.get_frame_vm_rights()) };
+        if likely(
+            vm_rights == vm_rights_t::VMReadWrite
+                || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly),
+        ) {
             let base_ptr = buffer_cap.get_frame_base_ptr();
             let page_bits = pageBitsForSize(buffer_cap.get_frame_size());
             return Some(convert_to_mut_type_ref::<seL4_IPCBuffer>(
@@ -504,8 +508,11 @@ impl tcb_t {
             return None;
         }
 
-        let vm_rights = buffer_cap.get_frame_vm_rights();
-        if vm_rights == VMReadWrite || (!is_receiver && vm_rights == VMReadOnly) {
+        let vm_rights: vm_rights_t =
+            unsafe { core::mem::transmute(buffer_cap.get_frame_vm_rights()) };
+        if vm_rights == vm_rights_t::VMReadWrite
+            || (!is_receiver && vm_rights == vm_rights_t::VMReadOnly)
+        {
             let base_ptr = buffer_cap.get_frame_base_ptr();
             let page_bits = pageBitsForSize(buffer_cap.get_frame_size());
             return Some(convert_to_mut_type_ref::<seL4_IPCBuffer>(

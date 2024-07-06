@@ -397,6 +397,7 @@ fn init_irqs(root_cnode_cap: &cap_t) {
     }
 }
 
+#[cfg(target_arch = "riscv64")]
 unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
     copyGlobalMappings(rootserver.vspace);
     let lvl1pt_cap = cap_t::new_page_table_cap(IT_ASID, rootserver.vspace, 1, rootserver.vspace);
@@ -423,6 +424,10 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
         end: slot_pos_after,
     };
     lvl1pt_cap
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
+    todo!();
 }
 
 fn init_bi_frame_cap(
@@ -526,7 +531,14 @@ pub fn rust_create_mapped_it_frame_cap(
     } else {
         frame_size = RISCVPageBits;
     }
-    let cap = cap_t::new_frame_cap(asid, pptr, frame_size, VMReadWrite, 0, vptr);
+    let cap = cap_t::new_frame_cap(
+        asid,
+        pptr,
+        frame_size,
+        vm_rights_t::VMReadWrite as usize,
+        0,
+        vptr,
+    );
     map_it_frame_cap(pd_cap, &cap);
     cap
 }

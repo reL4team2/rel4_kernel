@@ -43,8 +43,7 @@ pub fn invoke_tcb_read_registers(
         }
         let j = i;
         i = 0;
-        while i < gpRegNum && i + frameRegNum < n && i + frameRegNum < msgRegisterNum
-        {
+        while i < gpRegNum && i + frameRegNum < n && i + frameRegNum < msgRegisterNum {
             thread.tcbArch.set_register(
                 // msgRegister[i + frameRegNum],
                 ArchReg::Msg(i + frameRegNum),
@@ -87,10 +86,8 @@ pub fn invoke_tcb_write_registers(
     }
     i = 0;
     while i < gpRegNum && i + frameRegNum < n {
-        dest.tcbArch.set_register(
-            ArchReg::GP(i),
-            get_syscall_arg(i + frameRegNum + 2, buffer),
-        );
+        dest.tcbArch
+            .set_register(ArchReg::GP(i), get_syscall_arg(i + frameRegNum + 2, buffer));
         i += 1;
     }
 

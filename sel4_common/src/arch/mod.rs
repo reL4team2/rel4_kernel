@@ -38,7 +38,7 @@ impl ArchTCB {
     }
 
     /// Get the raw pointer of the TCB
-    /// 
+    ///
     /// Used in the `restore_user_context`
     #[inline]
     pub fn raw_ptr(&self) -> usize {
