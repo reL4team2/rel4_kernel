@@ -41,6 +41,12 @@ if __name__ == "__main__":
     args = parse_args()
     clean_config()
     progname = sys.argv[0]
+
+    target = ""
+    if args.platform == "spike":
+        target = "riscv64imac-unknown-none-elf"
+    elif args.platform == "qemu-arm-virt":
+        target = "aarch64-unknown-none-softfloat"
     
     if os.path.exists(build_dir):
         shutil.rmtree(build_dir)
@@ -52,11 +58,11 @@ if __name__ == "__main__":
             sys.exit(-1)
     else:
         if args.cpu_nums > 1:
-            if not exec_shell("cargo build --release --target riscv64imac-unknown-none-elf --features ENABLE_SMP"):
+            if not exec_shell(f"cargo build --release --target {target} --features ENABLE_SMP"):
                 clean_config()
                 sys.exit(-1)
         else:
-            if not exec_shell("cargo build --release --target riscv64imac-unknown-none-elf"):
+            if not exec_shell(f"cargo build --release --target {target}"):
                 clean_config()
                 sys.exit(-1)
     
