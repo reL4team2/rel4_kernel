@@ -21,6 +21,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-b', '--baseline', dest="baseline", action="store_true",
                         help="baseline switch")
+    # parser.add_argument('-a', '--arch', dest="architecture", default="riscv64", help="build architecture")
+    parser.add_argument('-p', '--platform', dest='platform', default='spike', help="set-platform")
     parser.add_argument('-c', '--cpu', dest="cpu_nums", type=int,
                         help="kernel & qemu cpu nums", default=1)
     args = parser.parse_args()
@@ -59,12 +61,12 @@ if __name__ == "__main__":
                 sys.exit(-1)
     
     if args.cpu_nums > 1:
-        shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE -DSMP=TRUE && ninja"
+        shell_command = f"cd ./build && ../../init-build.sh  -DPLATFORM={args.platform} -DSIMULATION=TRUE -DSMP=TRUE && ninja"
         if not exec_shell(shell_command):
             clean_config()
             sys.exit(-1)
         sys.exit(0)
-    shell_command = "cd ./build && ../../init-build.sh  -DPLATFORM=spike -DSIMULATION=TRUE && ninja"
+    shell_command = f"cd ./build && ../../init-build.sh  -DPLATFORM={args.platform} -DSIMULATION=TRUE && ninja"
     if not exec_shell(shell_command):
         clean_config()
         sys.exit(-1)
