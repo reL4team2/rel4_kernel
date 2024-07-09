@@ -1,8 +1,25 @@
+//! 该模块定义了几乎全部的`capability`，可以在`sel4_common`中找到`plus_define_bitfield!`宏的具体实现，
+//! 该宏在生成`capability`的同时，会生成每个字段的`get``set`方法
+//! cap_t 表示一个capability，由两个机器字组成，包含了类型、对象元数据以及指向内核对象的指针。
+//! 每个类型的capability的每个字段都实现了get和set方法。
+//! 
+//! 记录在阅读代码段过程中用到的`cap`的特定字段含义：
+//! 
+//! ```
+//! untyped_cap:
+//!  - capFreeIndex：从capPtr到可用的块的偏移，单位是2^seL4_MinUntypedBits大小的块数。如果seL4_MinUntypedBits是4，那么2^seL4_MinUntypedBits就是16字节。如果一个64字节的内存块已经分配了前32字节，则CapFreeIndex会存储2，因为已经使用了2个16字节的块。
+//!  - capBlockSize：当前untyped块中剩余空间大小
+//! endpoint_cap:
+//!  - capEPBadge：当使用Mint方法创建一个新的endpoint_cap时，可以设置badge，用于表示派生关系，例如一个进程可以与多个进程通信，为了判断消息究竟来自哪个进程，就可以使用badge区分。
+//! ```
+//! Represent a capability, composed by two words. Different cap can contain different bit fields.
+
+
 pub mod zombie;
 
-use sel4_common::{sel4_config::*, utils::pageBitsForSize, MASK};
+use sel4_common::{sel4_config::*, MASK};
 
-use crate::{arch::cap_t, arch::CapTag};
+use crate::arch::{arch_same_object_as, cap_t, CapTag};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -172,6 +189,7 @@ impl cap_t {
     }
 }
 
+/// 判断两个cap指向的内核对象是否是同一个内存区域
 pub fn same_region_as(cap1: &cap_t, cap2: &cap_t) -> bool {
     match cap1.get_cap_type() {
         CapTag::CapUntypedCap => {
@@ -186,16 +204,7 @@ pub fn same_region_as(cap1: &cap_t, cap2: &cap_t) -> bool {
 
             return false;
         }
-        CapTag::CapFrameCap => {
-            if cap2.get_cap_type() == CapTag::CapFrameCap {
-                let botA = cap1.get_frame_base_ptr();
-                let botB = cap2.get_frame_base_ptr();
-                let topA = botA + MASK!(pageBitsForSize(cap1.get_frame_size()));
-                let topB = botB + MASK!(pageBitsForSize(cap2.get_frame_size()));
-                return (botA <= botB) && (topA >= topB) && (botB <= topB);
-            }
-            false
-        }
+
         CapTag::CapEndpointCap
         | CapTag::CapNotificationCap
         | CapTag::CapPageTableCap
@@ -235,7 +244,11 @@ pub fn same_region_as(cap1: &cap_t, cap2: &cap_t) -> bool {
     }
 }
 
-/// 判断两个cap指向的内核对象是否是同一个内存区域
+/// Check whether two caps point to the same kernel object, if not,
+///  whether two kernel objects use the same memory region.
+/// 
+/// A special case is that cap2 is a untyped_cap derived from cap1, in this case, cap1 will excute
+/// setUntypedCapAsFull, so you can assume cap1 and cap2 are different.
 pub fn same_object_as(cap1: &cap_t, cap2: &cap_t) -> bool {
     if cap1.get_cap_type() == CapTag::CapUntypedCap {
         return false;
@@ -251,15 +264,7 @@ pub fn same_object_as(cap1: &cap_t, cap2: &cap_t) -> bool {
     same_region_as(cap1, cap2)
 }
 
-fn arch_same_object_as(cap1: &cap_t, cap2: &cap_t) -> bool {
-    if cap1.get_cap_type() == CapTag::CapFrameCap && cap2.get_cap_type() == CapTag::CapFrameCap {
-        return cap1.get_frame_base_ptr() == cap2.get_frame_base_ptr()
-            && cap1.get_frame_size() == cap2.get_frame_size()
-            && (cap1.get_frame_is_device() == 0) == (cap2.get_frame_is_device() == 0);
-    }
-    same_region_as(cap1, cap2)
-}
-
+/// 判断一个`capability`是否是可撤销的
 pub fn is_cap_revocable(derived_cap: &cap_t, src_cap: &cap_t) -> bool {
     if derived_cap.isArchCap() {
         return false;

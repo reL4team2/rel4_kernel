@@ -7,11 +7,11 @@ use crate::{
             lookupPDSlot_ret_t, lookupPGDSlot_ret_t, lookupPTSlot_ret_t, lookupPUDSlot_ret_t,
         },
         utils::{GET_PD_INDEX, GET_PGD_INDEX, GET_PT_INDEX, GET_UPUD_INDEX},
-        vm_rights::vm_rights_t,
     },
     asid_t, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t, vptr_t,
 };
 use sel4_common::{
+    arch::vm_rights_t,
     fault::lookup_fault_t,
     sel4_config::{seL4_PageBits, seL4_PageTableBits, PT_INDEX_BITS},
     structures::exception_t,

@@ -3,11 +3,15 @@
 
 mod arch_tcb;
 mod message_info;
+mod object;
 mod registers;
+mod vm_rights;
 pub use arch_tcb::ArchTCB;
 pub use message_info::*;
+pub use object::*;
 pub use registers::*;
 use riscv::register::time;
+pub use vm_rights::*;
 
 const SBI_SET_TIMER: usize = 0;
 const SBI_CONSOLE_PUTCHAR: usize = 1;

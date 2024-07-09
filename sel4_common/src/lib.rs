@@ -7,7 +7,7 @@
 #![allow(non_upper_case_globals)]
 
 pub mod arch;
-mod console;
+pub mod console;
 pub mod fault;
 mod ffi;
 pub mod logging;
@@ -18,6 +18,8 @@ pub mod sel4_config;
 pub mod smp;
 pub mod structures;
 pub mod utils;
+pub mod cap_rights;
+pub mod vm_rights;
 
 /// The ffi_call macro, It declares the function and call it
 ///
