@@ -8,5 +8,6 @@ mod vm_rights;
 pub use interface::{rust_map_kernel_window, set_vm_root};
 pub use machine::{setCurrentUserVSpaceRoot, ttbr_new};
 pub use pte::PTEFlags;
+pub use structures::*;
 pub use utils::{kpptr_to_paddr, paddr_to_pptr, pptr_to_paddr};
 pub use vm_rights::{maskVMRights, vm_rights_t};
