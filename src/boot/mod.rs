@@ -9,7 +9,8 @@ use core::mem::size_of;
 use crate::ffi::tcbDebugAppend;
 use crate::{BIT, ROUND_UP};
 use log::debug;
-use sel4_common::sel4_config::{seL4_PageBits, PADDR_TOP};
+use sel4_common::arch::config::PADDR_TOP;
+use sel4_common::sel4_config::seL4_PageBits;
 use spin::Mutex;
 
 pub use crate::boot::utils::paddr_to_pptr_reg;

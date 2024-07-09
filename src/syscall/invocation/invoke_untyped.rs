@@ -35,7 +35,7 @@ fn create_new_objects(
     }
 }
 
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 fn create_object(
     obj_type: ObjectType,
     region_base: pptr_t,
@@ -76,7 +76,7 @@ fn create_object(
         }
     }
 }
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 fn create_object(
     obj_type: ObjectType,
     region_base: pptr_t,

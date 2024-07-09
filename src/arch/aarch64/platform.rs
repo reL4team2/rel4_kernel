@@ -1,7 +1,8 @@
 use aarch64_cpu::registers::Writeable;
 use aarch64_cpu::registers::{TPIDR_EL1, VBAR_EL1};
 use core::arch::asm;
-use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS, PADDR_TOP};
+use sel4_common::arch::config::{KERNEL_ELF_BASE, PADDR_TOP};
+use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS};
 use sel4_common::utils::cpu_id;
 
 use super::ffi::*;
@@ -13,7 +14,6 @@ use crate::config::*;
 use crate::ffi::*;
 use crate::structures::*;
 use log::debug;
-use sel4_common::sel4_config::KERNEL_ELF_BASE;
 use sel4_vspace::*;
 
 use super::arm_gic::gic_v2::gic_v2::cpu_initLocalIRQController;

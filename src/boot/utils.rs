@@ -5,6 +5,7 @@ use crate::config::CONFIG_ROOT_CNODE_SIZE_BITS;
 use crate::structures::{p_region_t, region_t, v_region_t};
 use crate::{BIT, ROUND_DOWN, ROUND_UP};
 use log::debug;
+use sel4_common::arch::config::{PADDR_TOP, PPTR_BASE, PPTR_TOP};
 use sel4_common::{sel4_config::*, utils::convert_to_mut_type_ref};
 use sel4_cspace::interface::*;
 use sel4_vspace::*;

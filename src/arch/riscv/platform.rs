@@ -1,6 +1,6 @@
 use riscv::register::{stvec, utvec::TrapMode};
 use sel4_common::{
-    arch::{get_time, set_timer},
+    arch::{config::KERNEL_ELF_BASE, get_time, set_timer},
     BIT,
 };
 use sel4_vspace::activate_kernel_vspace;
@@ -15,7 +15,6 @@ use crate::{
     interrupt::set_sie_mask,
 };
 use log::debug;
-use sel4_common::sel4_config::KERNEL_ELF_BASE;
 use sel4_vspace::*;
 
 pub fn init_cpu() {
