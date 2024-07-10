@@ -6,7 +6,7 @@ use crate::structures::{p_region_t, region_t, v_region_t};
 use crate::{BIT, ROUND_DOWN, ROUND_UP};
 use log::debug;
 use sel4_common::arch::config::{PADDR_TOP, PPTR_BASE, PPTR_TOP};
-use sel4_common::{sel4_config::*, utils::convert_to_mut_type_ref};
+use sel4_common::sel4_config::*;
 use sel4_cspace::interface::*;
 use sel4_vspace::*;
 // #[cfg(target_arch="riscv64")]
@@ -90,38 +90,4 @@ pub fn provide_cap(root_cnode_cap: &cap_t, cap: cap_t) -> bool {
         ndks_boot.slot_pos_cur += 1;
         return true;
     }
-}
-
-
-pub fn create_it_pt_cap(vspace_cap: &cap_t, pptr: pptr_t, vptr: vptr_t, asid: usize) -> cap_t {
-    let cap = cap_t::new_page_table_cap(asid, pptr, 1, vptr);
-    map_it_pt_cap(vspace_cap, &cap);
-    return cap;
-}
-
-#[no_mangle]
-#[cfg(target_arch = "riscv64")]
-pub fn map_it_frame_cap(_vspace_cap: &cap_t, _frame_cap: &cap_t) {
-    let vptr = _frame_cap.get_frame_mapped_address();
-    let lvl1pt = convert_to_mut_type_ref::<pte_t>(_vspace_cap.get_cap_ptr());
-    let frame_pptr: usize = _frame_cap.get_cap_ptr();
-    let pt_ret = lvl1pt.lookup_pt_slot(vptr);
-
-    let targetSlot = convert_to_mut_type_ref::<pte_t>(pt_ret.ptSlot as usize);
-
-    *targetSlot = pte_t::new(
-        pptr_to_paddr(frame_pptr) >> seL4_PageBits,
-        PTEFlags::ADUVRWX,
-    );
-    sfence();
-    #[cfg(target_arch = "aarch64")]
-    todo!();
-}
-
-#[no_mangle]
-#[cfg(target_arch = "aarch64")]
-// pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t, executable: bool) {
-pub fn map_it_frame_cap(vspace_cap: &cap_t, frame_cap: &cap_t) {
-    // let vspace_root=vspace_cap.get_
-    todo!();
 }

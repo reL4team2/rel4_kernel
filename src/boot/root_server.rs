@@ -1,5 +1,5 @@
 use super::calculate_extra_bi_size_bits;
-use super::utils::{arch_get_n_paging, map_it_frame_cap, provide_cap, write_slot};
+use super::utils::{arch_get_n_paging, provide_cap, write_slot};
 use super::{ndks_boot, utils::is_reg_empty};
 use crate::interrupt::{setIRQState, IRQState};
 use crate::structures::{
@@ -8,7 +8,7 @@ use crate::structures::{
 };
 use crate::{BIT, ROUND_DOWN};
 use log::debug;
-use sel4_common::arch::{vm_rights_t, ArchReg, ArchTCB};
+use sel4_common::arch::{ArchReg, ArchTCB};
 #[cfg(target_arch = "aarch64")]
 use sel4_common::sel4_config::PT_INDEX_BITS;
 use sel4_common::sel4_config::{
@@ -399,8 +399,6 @@ fn init_irqs(root_cnode_cap: &cap_t) {
 
 #[cfg(target_arch = "riscv64")]
 unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
-    use super::utils::create_it_pt_cap;
-
     copyGlobalMappings(rootserver.vspace);
     let lvl1pt_cap = cap_t::new_page_table_cap(IT_ASID, rootserver.vspace, 1, rootserver.vspace);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
@@ -430,8 +428,6 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
 
 #[cfg(target_arch = "aarch64")]
 unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
-    use super::utils::create_it_pt_cap;
-
     // create the PGD
     let vspace_cap = cap_t::new_page_global_directory_cap(IT_ASID, rootserver.vspace, 1);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
@@ -547,7 +543,7 @@ fn rust_create_frames_of_region(
     let mut frame_cap: cap_t;
     while f < reg.end {
         if do_map {
-            frame_cap = rust_create_mapped_it_frame_cap(
+            frame_cap = create_mapped_it_frame_cap(
                 pd_cap,
                 f,
                 pptr_to_paddr((f as isize - pv_offset) as usize),
@@ -580,36 +576,9 @@ fn rust_create_frames_of_region(
 }
 
 unsafe fn create_bi_frame_cap(root_cnode_cap: &cap_t, pd_cap: &cap_t, vptr: usize) {
-    let cap =
-        rust_create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
+    let cap = create_mapped_it_frame_cap(pd_cap, rootserver.boot_info, vptr, IT_ASID, false, false);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapBootInfoFrame), cap);
-}
-
-pub fn rust_create_mapped_it_frame_cap(
-    pd_cap: &cap_t,
-    pptr: usize,
-    vptr: usize,
-    asid: usize,
-    use_large: bool,
-    _exec: bool,
-) -> cap_t {
-    let frame_size: usize;
-    if use_large {
-        frame_size = RISCVMegaPageBits;
-    } else {
-        frame_size = RISCVPageBits;
-    }
-    let cap = cap_t::new_frame_cap(
-        asid,
-        pptr,
-        frame_size,
-        vm_rights_t::VMReadWrite as usize,
-        0,
-        vptr,
-    );
-    map_it_frame_cap(pd_cap, &cap);
-    cap
 }
 
 fn rust_create_unmapped_it_frame_cap(pptr: pptr_t, _use_large: bool) -> cap_t {
@@ -644,8 +613,7 @@ unsafe fn rust_populate_bi_frame(
 
 unsafe fn create_ipcbuf_frame_cap(root_cnode_cap: &cap_t, pd_cap: &cap_t, vptr: usize) -> cap_t {
     clear_memory(rootserver.ipc_buf as *mut u8, PAGE_BITS);
-    let cap =
-        rust_create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
+    let cap = create_mapped_it_frame_cap(pd_cap, rootserver.ipc_buf, vptr, IT_ASID, false, false);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapInitThreadIPCBuffer), cap.clone());
     return cap;
