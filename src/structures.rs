@@ -12,17 +12,20 @@ pub struct seL4_BootInfoHeader {
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct region_t {
     pub start: usize,
     pub end: usize,
 }
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 pub struct p_region_t {
     pub start: usize,
     pub end: usize,
 }
 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct v_region_t {
     pub start: usize,

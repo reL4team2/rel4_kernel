@@ -2,6 +2,7 @@ use aarch64_cpu::registers::Writeable;
 use aarch64_cpu::registers::{TPIDR_EL1, VBAR_EL1};
 use core::arch::asm;
 use sel4_common::arch::config::{KERNEL_ELF_BASE, PADDR_TOP};
+use sel4_common::ffi_addr;
 use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS};
 use sel4_common::utils::cpu_id;
 
@@ -17,6 +18,7 @@ use log::debug;
 use sel4_vspace::*;
 
 use super::arm_gic::gic_v2::gic_v2::cpu_initLocalIRQController;
+
 pub fn init_cpu() -> bool {
     // use arch::aarch64::arm_gic::gic_v2;
 
@@ -47,13 +49,10 @@ pub fn init_cpu() -> bool {
     true
 }
 
-pub fn init_freemem(ui_p_reg: region_t, dtb_p_reg: p_region_t) -> bool {
-    extern "C" {
-        fn ki_end();
-    }
+pub fn init_freemem(ui_p_reg: p_region_t, dtb_p_reg: p_region_t) -> bool {
     unsafe {
         res_reg[0].start = paddr_to_pptr(kpptr_to_paddr(KERNEL_ELF_BASE));
-        res_reg[0].end = paddr_to_pptr(kpptr_to_paddr(ki_end as usize));
+        res_reg[0].end = paddr_to_pptr(kpptr_to_paddr(ffi_addr!(ki_end)));
     }
 
     let mut index = 1;
@@ -78,7 +77,8 @@ pub fn init_freemem(ui_p_reg: region_t, dtb_p_reg: p_region_t) -> bool {
             return false;
         }
         unsafe {
-            res_reg[index] = paddr_to_pptr_reg(&dtb_p_reg);
+            // FIXED: here should be ui_p_reg, but before is dtb_p_reg.
+            res_reg[index] = paddr_to_pptr_reg(&ui_p_reg);
             index += 1;
         }
     } else {

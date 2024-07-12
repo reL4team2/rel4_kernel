@@ -17,7 +17,7 @@ pub fn create_untypeds(root_cnode_cap: &cap_t, boot_mem_reuse_reg: region_t) -> 
         let mut start = 0;
         for i in 0..ndks_boot.resv_count {
             let reg = paddr_to_pptr_reg(&p_region_t {
-                start: start,
+                start,
                 end: ndks_boot.reserved[i].start,
             });
             if !create_untypeds_for_region(root_cnode_cap, true, reg.clone(), first_untyped_slot) {
@@ -84,7 +84,6 @@ fn create_untypeds_for_region(
     mut reg: region_t,
     first_untyped_slot: seL4_SlotPos,
 ) -> bool {
-    // debug!("{:#x} {:#x}", reg.start, reg.end);
     while !is_reg_empty(&reg) {
         let mut size_bits = seL4_WordBits - 1 - (reg.end - reg.start).leading_zeros() as usize;
         if size_bits > seL4_MaxUntypedBits {
@@ -108,7 +107,6 @@ fn create_untypeds_for_region(
             }
         }
         reg.start += BIT!(size_bits);
-        // debug!("start :{:#x} end:{:#x}",reg.start ,reg.end);
     }
     return true;
 }

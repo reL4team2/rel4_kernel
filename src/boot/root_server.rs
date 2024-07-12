@@ -59,7 +59,6 @@ pub fn root_server_init(
     unsafe {
         root_server_mem_init(it_v_reg, extra_bi_size_bits);
     }
-
     let root_cnode_cap = unsafe { create_root_cnode() };
     if root_cnode_cap.get_cap_type() == CapTag::CapNullCap {
         debug!("ERROR: root c-node creation failed\n");
@@ -67,6 +66,8 @@ pub fn root_server_init(
     }
 
     create_domain_cap(&root_cnode_cap);
+    //TODO: Implemente it for aarch64 in the future
+    #[cfg(target_arch = "riscv64")]
     init_irqs(&root_cnode_cap);
     unsafe {
         rust_populate_bi_frame(0, CONFIG_MAX_NUM_NODES, ipcbuf_vptr, extra_bi_size);
@@ -185,18 +186,24 @@ unsafe fn create_initial_thread(
     tcb as *mut tcb_t
 }
 
+// TODO: FIX asid_init for aarch64
 fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
     let it_ap_cap = create_it_asid_pool(&root_cnode_cap);
     if it_ap_cap.get_cap_type() == CapTag::CapNullCap {
         debug!("ERROR: could not create ASID pool for initial thread");
         return false;
     }
-
+    #[cfg(target_arch = "riscv64")]
     unsafe {
         let ap = it_ap_cap.get_cap_ptr();
         let ptr = (ap + 8 * IT_ASID) as *mut usize;
         *ptr = it_pd_cap.get_cap_ptr();
         riscvKSASIDTable[IT_ASID >> asidLowBits] = ap as *mut asid_pool_t;
+    }
+    #[cfg(target_arch = "aarch64")]
+    {
+        let ap = it_ap_cap.get_cap_ptr();
+        let asid_map = it_pd_cap.get_pgd_base_ptr();
     }
     true
 }
@@ -379,6 +386,7 @@ fn create_domain_cap(root_cnode_cap: &cap_t) {
     }
 }
 
+// TODO: FIX this for aarch64
 fn init_irqs(root_cnode_cap: &cap_t) {
     for i in 0..maxIRQ + 1 {
         if i != irqInvalid {
@@ -438,11 +446,11 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
     let PGD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS * 3;
     let PUD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS * 2;
     let PD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS;
-    let mut vptr = ROUND_DOWN!(it_v_reg.start, PGD_INDEX_OFFSET);
+     let mut vptr = ROUND_DOWN!(it_v_reg.start, PGD_INDEX_OFFSET);
     while vptr < it_v_reg.end {
         if !provide_cap(
             root_cnode_cap,
-            create_it_pt_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
+            create_it_pud_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
         ) {
             return cap_t::new_null_cap();
         }
@@ -454,7 +462,7 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
     while vptr < it_v_reg.end {
         if !provide_cap(
             root_cnode_cap,
-            create_it_pt_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
+            create_it_pd_cap(&vspace_cap, it_alloc_paging(), vptr, IT_ASID),
         ) {
             return cap_t::new_null_cap();
         }
@@ -473,20 +481,6 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
         vptr += BIT!(PD_INDEX_OFFSET);
     }
 
-    let mut i = 0;
-    while i < 4 - 1 {
-        let mut pt_vptr = ROUND_DOWN!(it_v_reg.start, PAGE_BITS);
-        while pt_vptr < it_v_reg.end {
-            if !provide_cap(
-                root_cnode_cap,
-                create_it_pt_cap(&vspace_cap, it_alloc_paging(), pt_vptr, IT_ASID),
-            ) {
-                return cap_t::new_null_cap();
-            }
-            pt_vptr += BIT!(PAGE_BITS);
-        }
-        i += 1;
-    }
     let slot_pos_after = ndks_boot.slot_pos_cur;
     (*ndks_boot.bi_frame).userImagePaging = seL4_SlotRegion {
         start: slot_pos_before,

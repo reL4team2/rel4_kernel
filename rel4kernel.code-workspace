@@ -5,6 +5,8 @@
 		},
 		{
 			"path": "../../kernel/"
+		},{
+			"path": "../../build-scripts"
 		}
 	],
 	"settings": {

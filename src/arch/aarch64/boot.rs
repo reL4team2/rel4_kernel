@@ -1,18 +1,17 @@
-use driver_collect::SerialDriver;
 use log::debug;
 use sel4_common::{sel4_config::PAGE_BITS, BIT};
 use sel4_task::create_idle_thread;
-use sel4_vspace::{kpptr_to_paddr, rust_map_kernel_window};
+use sel4_vspace::kpptr_to_paddr;
 
 use crate::arch::aarch64::platform::{cleanInvalidateL1Caches, invalidateLocalTLB};
+
 use crate::{
-    arch::{init_cpu, init_freemem},
+    arch::init_freemem,
     boot::{
         bi_finalise, calculate_extra_bi_size_bits, create_untypeds, init_core_state, init_dtb,
         ksNumCPUs, ndks_boot, paddr_to_pptr_reg, root_server_init,
     },
     config::{BI_FRAME_SIZE_BITS, USER_TOP},
-    ffi::init_plat,
     structures::{p_region_t, seL4_SlotRegion, v_region_t},
 };
 
@@ -83,8 +82,8 @@ pub fn try_init_kernel(
         return false;
     }
 
-    // TODO: init free memory regions
-    if !init_freemem(ui_reg.clone(), dtb_p_reg.unwrap().clone()) {
+    // FIXED: init_freemem should be p_region_t, but is region_t before.
+    if !init_freemem(ui_p_reg.clone(), dtb_p_reg.unwrap().clone()) {
         debug!("ERROR: free memory management initialization failed\n");
         return false;
     }
