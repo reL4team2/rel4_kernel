@@ -5,6 +5,7 @@ pub mod utils;
 use core::intrinsics::unlikely;
 use sel4_common::arch::ArchReg;
 use sel4_common::fault::{lookup_fault_t, seL4_Fault_t, FaultType};
+use sel4_common::ffi_call;
 use sel4_common::sel4_config::tcbCaller;
 
 pub const SysCall: isize = -1;
@@ -15,7 +16,6 @@ pub const SysRecv: isize = -5;
 pub const SysReply: isize = -6;
 pub const SysYield: isize = -7;
 pub const SysNBRecv: isize = -8;
-use crate::ffi::handleUnknownSyscall;
 use sel4_common::structures::exception_t;
 use sel4_common::utils::convert_to_mut_type_ref;
 use sel4_cspace::interface::CapTag;
@@ -35,11 +35,10 @@ use self::invocation::handleInvocation;
 
 #[no_mangle]
 pub fn slowpath(syscall: usize) {
-    // debug!("enter slow path: {}", syscall as isize);
+    // log::debug!("enter slow path: {}", syscall as isize);
     if (syscall as isize) < -8 || (syscall as isize) > -1 {
-        unsafe {
-            handleUnknownSyscall(syscall);
-        }
+        // using ffi_call! macro to call c function
+        ffi_call!(handleUnknownSyscall(id: usize => syscall));
     } else {
         handleSyscall(syscall);
     }

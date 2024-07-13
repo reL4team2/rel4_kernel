@@ -133,7 +133,7 @@ fn provide_untyped_cap(
 
     if !device_memory && !pptr_in_kernel_window(pptr) {
         debug!(
-            "Kernel init: Non-device untyped pptr {} outside kernel window",
+            "Kernel init: Non-device untyped pptr {:#x} outside kernel window",
             pptr
         );
         return false;

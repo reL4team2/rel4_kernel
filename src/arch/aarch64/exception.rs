@@ -1,10 +1,13 @@
 use super::read_stval;
-use crate::config::*;
+use crate::arch::aarch64::consts::ARMPrefetchAbort;
 use crate::kernel::boot::current_fault;
 use crate::syscall::handle_fault;
+use crate::{arch::aarch64::consts::ARMDataAbort, config::*};
 use sel4_common::fault::seL4_Fault_t;
 use sel4_common::structures::exception_t;
 use sel4_task::{activateThread, get_currenct_thread, schedule};
+
+use super::instruction::*;
 
 #[no_mangle]
 pub fn handleUserLevelFault(w_a: usize, w_b: usize) -> exception_t {
@@ -21,33 +24,62 @@ pub fn handleUserLevelFault(w_a: usize, w_b: usize) -> exception_t {
 pub fn handleVMFaultEvent(vm_faultType: usize) -> exception_t {
     let status = handle_vm_fault(vm_faultType);
     if status != exception_t::EXCEPTION_NONE {
-        // debug!("handle_fault: {}", vm_faultType);
         handle_fault(get_currenct_thread());
     }
     schedule();
     activateThread();
+    log::debug!("active thread");
     exception_t::EXCEPTION_NONE
 }
 
 pub fn handle_vm_fault(type_: usize) -> exception_t {
-    let addr = read_stval();
+    /*
+    exception_t handleVMFault(tcb_t *thread, vm_fault_type_t vm_faultType)
+    {
+        switch (vm_faultType) {
+        case ARMDataAbort: {
+            word_t addr, fault;
+            addr = getFAR();
+            fault = getDFSR();
+    #ifdef CONFIG_ARM_HYPERVISOR_SUPPORT
+            /* use the IPA */
+            if (ARCH_NODE_STATE(armHSVCPUActive)) {
+                addr = GET_PAR_ADDR(addressTranslateS1(addr)) | (addr & MASK(PAGE_BITS));
+            }
+    #endif
+            current_fault = seL4_Fault_VMFault_new(addr, fault, false);
+            return EXCEPTION_FAULT;
+        }
+        case ARMPrefetchAbort: {
+            word_t pc, fault;
+            pc = getRestartPC(thread);
+            fault = getIFSR();
+    #ifdef CONFIG_ARM_HYPERVISOR_SUPPORT
+            if (ARCH_NODE_STATE(armHSVCPUActive)) {
+                pc = GET_PAR_ADDR(addressTranslateS1(pc)) | (pc & MASK(PAGE_BITS));
+            }
+    #endif
+            current_fault = seL4_Fault_VMFault_new(pc, fault, true);
+            return EXCEPTION_FAULT;
+        }
+        default:
+            fail("Invalid VM fault type");
+        }
+    }
+    */
+    // ARMDataAbort = seL4_DataFault,               0
+    // ARMPrefetchAbort = seL4_InstructionFault     1
+    log::debug!("Handle VM fault: {}", type_);
     match type_ {
-        RISCVLoadPageFault | RISCVLoadAccessFault => {
-            unsafe {
-                current_fault = seL4_Fault_t::new_vm_fault(addr, RISCVLoadAccessFault, 0);
-            }
+        ARMDataAbort => {
+            let addr = get_far();
+            let fault = get_esr();
+            log::debug!("fault addr: {:#x} esr: {:#x}", addr, fault);
+            seL4_Fault_t::new_vm_fault(addr, fault, 0);
             exception_t::EXCEPTION_FAULT
         }
-        RISCVStorePageFault | RISCVStoreAccessFault => {
-            unsafe {
-                current_fault = seL4_Fault_t::new_vm_fault(addr, RISCVStoreAccessFault, 0);
-            }
-            exception_t::EXCEPTION_FAULT
-        }
-        RISCVInstructionAccessFault | RISCVInstructionPageFault => {
-            unsafe {
-                current_fault = seL4_Fault_t::new_vm_fault(addr, RISCVInstructionAccessFault, 1);
-            }
+        ARMPrefetchAbort => {
+            todo!("prefetch Abort");
             exception_t::EXCEPTION_FAULT
         }
         _ => panic!("Invalid VM fault type:{}", type_),

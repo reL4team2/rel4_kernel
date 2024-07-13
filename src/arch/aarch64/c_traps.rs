@@ -16,8 +16,10 @@ use crate::{
     interrupt::getActiveIRQ,
 };
 
+use sel4_common::ffi_call;
 #[cfg(feature = "ENABLE_SMP")]
 use sel4_common::utils::cpu_id;
+use sel4_task::get_currenct_thread;
 
 // TODO: implement the restore user context in the rust.
 // #[no_mangle]
@@ -115,41 +117,23 @@ pub fn c_handle_interrupt() {
 }
 
 #[no_mangle]
-pub fn c_handle_exception() {
-    #[cfg(feature = "ENABLE_SMP")]
-    unsafe {
-        clh_lock_acquire(cpu_id(), false);
-    }
-    // if hart_id() == 0 {
-    //     debug!("c_handle_exception");
-    // }
-
-    let cause = read_scause();
-    match cause {
-        RISCVInstructionAccessFault
-        | RISCVLoadAccessFault
-        | RISCVStoreAccessFault
-        | RISCVLoadPageFault
-        | RISCVStorePageFault
-        | RISCVInstructionPageFault => {
-            handleVMFaultEvent(cause);
-        }
-        _ => {
-            handleUserLevelFault(cause, 0);
-        }
-    }
-    restore_user_context();
-}
-
-#[no_mangle]
 pub fn c_handle_syscall(_cptr: usize, _msgInfo: usize, syscall: usize) {
     #[cfg(feature = "ENABLE_SMP")]
     unsafe {
         clh_lock_acquire(cpu_id(), false);
     }
+    entry_hook();
+    // ffi_call!(c_entry_hook);
     // if hart_id() == 0 {
     //     debug!("c_handle_syscall: syscall: {},", syscall as isize);
     // }
     slowpath(syscall);
     // debug!("c_handle_syscall complete");
+}
+
+/// This function should be the first thing called from after entry.
+/// This function Save TPIDR(TLS) in aarch64.
+#[inline]
+pub fn entry_hook() {
+    get_currenct_thread().tcbArch.save_thread_local();
 }

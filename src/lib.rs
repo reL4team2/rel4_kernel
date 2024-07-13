@@ -9,6 +9,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![feature(alloc_error_handler)]
+#![feature(asm_const)]
 #![feature(panic_info_message)]
 #![feature(linkage)]
 #![feature(stmt_expr_attributes)]

@@ -446,7 +446,7 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
     let PGD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS * 3;
     let PUD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS * 2;
     let PD_INDEX_OFFSET = PAGE_BITS + PT_INDEX_BITS;
-     let mut vptr = ROUND_DOWN!(it_v_reg.start, PGD_INDEX_OFFSET);
+    let mut vptr = ROUND_DOWN!(it_v_reg.start, PGD_INDEX_OFFSET);
     while vptr < it_v_reg.end {
         if !provide_cap(
             root_cnode_cap,
