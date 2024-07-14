@@ -75,6 +75,7 @@ pub fn lookup_extra_caps_with_buf(thread: &tcb_t, buf: Option<&seL4_IPCBuffer>) 
     return exception_t::EXCEPTION_NONE;
 }
 
+// TODO: Remove this option because it not need to check whether is None or Some
 #[inline]
 pub fn get_syscall_arg(i: usize, ipc_buffer: Option<&seL4_IPCBuffer>) -> usize {
     match i < msgRegisterNum {

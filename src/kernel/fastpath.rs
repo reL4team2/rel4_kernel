@@ -135,7 +135,6 @@ pub fn fastpath_copy_mrs(length: usize, src: &mut tcb_t, dest: &mut tcb_t) {
 #[inline]
 #[no_mangle]
 pub fn fastpath_call(cptr: usize, msgInfo: usize) {
-    // debug!("enter fastpath call");
     let current = get_currenct_thread();
     let mut info = seL4_MessageInfo_t::from_word(msgInfo);
     let length = info.get_length();

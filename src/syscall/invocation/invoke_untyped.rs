@@ -83,7 +83,24 @@ fn create_object(
     user_size: usize,
     device_mem: usize,
 ) -> cap_t {
-    todo!("create object")
+    match obj_type {
+        ObjectType::seL4_ARM_SmallPageObject => cap_t::new_frame_cap(
+            device_mem,
+            vm_rights_t::VMReadWrite as _,
+            0,
+            ARM_Small_Page,
+            asidInvalid,
+            region_base,
+        ),
+        _ => {
+            todo!(
+                "create object: {:?} region: {:#x} - {:#x}",
+                obj_type,
+                region_base,
+                region_base + user_size
+            )
+        }
+    }
     // match obj_type {
     //     ObjectType::TCBObject => {
     //         let tcb = convert_to_mut_type_ref::<tcb_t>(region_base + TCB_OFFSET);

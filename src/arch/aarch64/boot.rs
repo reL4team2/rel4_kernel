@@ -1,4 +1,5 @@
 use log::debug;
+use sel4_common::arch::config::KERNEL_ELF_BASE;
 use sel4_common::{sel4_config::PAGE_BITS, BIT};
 use sel4_task::create_idle_thread;
 use sel4_vspace::kpptr_to_paddr;
@@ -14,8 +15,6 @@ use crate::{
     config::{BI_FRAME_SIZE_BITS, USER_TOP},
     structures::{p_region_t, seL4_SlotRegion, v_region_t},
 };
-
-use super::consts::KERNEL_ELF_BASE;
 
 pub fn try_init_kernel(
     ui_p_reg_start: usize,

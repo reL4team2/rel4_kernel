@@ -85,7 +85,10 @@ fn decode_frame_invocation(
     buffer: Option<&seL4_IPCBuffer>,
 ) -> exception_t {
     match label {
-        MessageLabel::ARMPageMap => exception_t::EXCEPTION_NONE,
+        MessageLabel::ARMPageMap => {
+            unimplemented!("ARMPageMap of DecodeFrameInvocation");
+            exception_t::EXCEPTION_NONE
+        }
         MessageLabel::ARMPageUnmap => {
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invoke_page_unmap(frame_slot)
