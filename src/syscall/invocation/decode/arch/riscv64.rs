@@ -315,7 +315,7 @@ fn decode_frame_map(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
 
-            if pt_slot.is_PTEable() {
+            if pt_slot.is_pte_table() {
                 debug!("RISCVPageMap: no mapping to remap.");
                 unsafe {
                     current_syscall_error._type = seL4_DeleteFirst;
