@@ -1,7 +1,7 @@
 use sel4_common::structures::seL4_IPCBuffer;
 use sel4_cspace::interface::{cap_t, cte_t};
 use sel4_task::{set_thread_state, tcb_t, ThreadState};
-use sel4_vspace::{PTE, vptr_t};
+use sel4_vspace::{vptr_t, PTE};
 
 #[inline]
 #[no_mangle]

@@ -3,7 +3,7 @@ use sel4_common::arch::MessageLabel;
 use sel4_common::structures::exception_t;
 use sel4_common::structures::seL4_IPCBuffer;
 use sel4_cspace::interface::{cap_t, cte_t};
-use sel4_vspace::{PTE, vptr_t};
+use sel4_vspace::{vptr_t, PTE};
 
 #[repr(C)]
 struct lookupPGDSlot_ret_t {

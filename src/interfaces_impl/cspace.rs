@@ -11,7 +11,7 @@ use sel4_cspace::interface::{cap_t, finaliseCap_ret, CapTag};
 use sel4_ipc::{endpoint_t, notification_t, Transfer};
 use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t};
 use sel4_vspace::{
-    asid_pool_t, asid_t, delete_asid, delete_asid_pool, find_vspace_for_asid, PTE, unmapPage,
+    asid_pool_t, asid_t, delete_asid, delete_asid_pool, find_vspace_for_asid, unmapPage, PTE,
 };
 
 #[cfg(target_arch = "riscv64")]

@@ -222,14 +222,20 @@ fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
 }
 
 fn create_it_asid_pool(root_cnode_cap: &cap_t) -> cap_t {
-    log::debug!("root_server.asid_pool: {:#x}", unsafe { rootserver.asid_pool });
+    log::debug!("root_server.asid_pool: {:#x}", unsafe {
+        rootserver.asid_pool
+    });
     let ap_cap = unsafe { cap_t::new_asid_pool_cap(IT_ASID >> asidLowBits, rootserver.asid_pool) };
     unsafe {
         let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
         write_slot(ptr.add(seL4_CapInitThreadASIDPool), ap_cap.clone());
         write_slot(ptr.add(seL4_CapASIDControl), cap_t::new_asid_control_cap());
     }
-    log::debug!("asid_init needed to create: {:p} {:#x}", &ap_cap, ap_cap.get_cap_ptr());
+    log::debug!(
+        "asid_init needed to create: {:p} {:#x}",
+        &ap_cap,
+        ap_cap.get_cap_ptr()
+    );
     ap_cap
 }
 
@@ -589,7 +595,6 @@ unsafe fn create_bi_frame_cap(root_cnode_cap: &cap_t, pd_cap: &cap_t, vptr: usiz
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     write_slot(ptr.add(seL4_CapBootInfoFrame), cap);
 }
-
 
 unsafe fn rust_populate_bi_frame(
     node_id: usize,

@@ -13,8 +13,8 @@ use sel4_common::{
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
-    asid_pool_t, pptr_t, pptr_to_paddr, PTE, set_asid_pool_by_index, unmapPage, vm_attributes_t,
-    PTEFlags,
+    asid_pool_t, pptr_t, pptr_to_paddr, set_asid_pool_by_index, unmapPage, vm_attributes_t,
+    PTEFlags, PTE,
 };
 #[cfg(target_arch = "riscv64")]
 use sel4_vspace::{copyGlobalMappings, sfence};
@@ -121,29 +121,20 @@ pub fn invoke_page_map(
     exception_t::EXCEPTION_NONE
 }
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_huge_page_map(
-    asid: usize,
-    frame_slot: &mut cte_t,
-    pudSlot: &mut PTE,
-) -> exception_t {
+pub fn invoke_huge_page_map(asid: usize, frame_slot: &mut cte_t, pudSlot: &mut PTE) -> exception_t {
+    todo!();
     exception_t::EXCEPTION_NONE
 }
 
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_large_page_map(
-    asid: usize,
-    frame_slot: &mut cte_t,
-    pdSlot: &mut PTE,
-) -> exception_t {
+pub fn invoke_large_page_map(asid: usize, frame_slot: &mut cte_t, pdSlot: &mut PTE) -> exception_t {
+    todo!();
     exception_t::EXCEPTION_NONE
 }
 
 #[cfg(target_arch = "aarch64")]
-pub fn invoke_small_page_map(
-    asid: usize,
-    frame_slot: &mut cte_t,
-    pdSlot: &mut PTE,
-) -> exception_t {
+pub fn invoke_small_page_map(asid: usize, frame_slot: &mut cte_t, pdSlot: &mut PTE) -> exception_t {
+    todo!();
     exception_t::EXCEPTION_NONE
 }
 

@@ -19,7 +19,7 @@ use sel4_common::{BIT, MASK};
 use sel4_cspace::interface::{cap_t, cte_t, CapTag};
 use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
 use sel4_vspace::{
-    checkVPAlignment, find_vspace_for_asid, get_asid_pool_by_index, PTE, vm_attributes_t,
+    checkVPAlignment, find_vspace_for_asid, get_asid_pool_by_index, vm_attributes_t, PTE,
 };
 
 use crate::{
