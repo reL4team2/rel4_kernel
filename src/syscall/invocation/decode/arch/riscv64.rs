@@ -285,7 +285,6 @@ fn decode_frame_map(
         }
 
         let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
-        #[cfg(target_arch = "riscv64")]
         if lu_ret.ptBitsLeft != pageBitsForSize(frame_size) {
             unsafe {
                 current_lookup_fault = lookup_fault_t::new_missing_cap(lu_ret.ptBitsLeft);

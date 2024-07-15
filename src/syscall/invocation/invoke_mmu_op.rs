@@ -96,7 +96,6 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
     frame_slot.cap.set_pt_mapped_asid(asidInvalid);
     exception_t::EXCEPTION_NONE
 }
-
 pub fn invoke_page_map(
     _frame_cap: &mut cap_t,
     w_rights_mask: usize,
@@ -111,6 +110,7 @@ pub fn invoke_page_map(
     let frame_addr = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     frame_slot.cap.set_frame_mapped_address(vaddr);
     frame_slot.cap.set_frame_mapped_asid(asid);
+    #[cfg(target_arch = "riscv64")]
     let executable = attr.get_execute_never() == 0;
     #[cfg(target_arch = "riscv64")]
     let pte = pte_t::make_user_pte(frame_addr, executable, vm_rights);
@@ -118,6 +118,32 @@ pub fn invoke_page_map(
     let pte = pte_t::make_user_pte(frame_addr, vm_rights, attr, frame_slot.cap.get_frame_size());
     set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
     pt_slot.update(pte);
+    exception_t::EXCEPTION_NONE
+}
+#[cfg(target_arch = "aarch64")]
+pub fn invoke_huge_page_map(
+    asid: usize,
+    frame_slot: &mut cte_t,
+    pudSlot: &mut pte_t,
+) -> exception_t {
+    exception_t::EXCEPTION_NONE
+}
+
+#[cfg(target_arch = "aarch64")]
+pub fn invoke_large_page_map(
+    asid: usize,
+    frame_slot: &mut cte_t,
+    pdSlot: &mut pte_t,
+) -> exception_t {
+    exception_t::EXCEPTION_NONE
+}
+
+#[cfg(target_arch = "aarch64")]
+pub fn invoke_small_page_map(
+    asid: usize,
+    frame_slot: &mut cte_t,
+    pdSlot: &mut pte_t,
+) -> exception_t {
     exception_t::EXCEPTION_NONE
 }
 

@@ -5,24 +5,29 @@ use crate::syscall::invocation::decode::current_syscall_error;
 use crate::syscall::ThreadState;
 use crate::syscall::{current_lookup_fault, get_syscall_arg, set_thread_state, unlikely};
 use log::debug;
-use sel4_common::sel4_config::{asidInvalid, seL4_FailedLookup, seL4_RangeError};
+use sel4_common::sel4_config::{
+    asidInvalid, seL4_AlignmentError, seL4_FailedLookup, seL4_RangeError, ARM_Huge_Page,
+    ARM_Large_Page, ARM_Small_Page,
+};
 use sel4_common::sel4_config::{seL4_DeleteFirst, seL4_InvalidArgument};
 use sel4_common::sel4_config::{
     seL4_IllegalOperation, seL4_InvalidCapability, seL4_RevokeFirst, seL4_TruncatedMessage,
     PD_INDEX_OFFSET,
 };
-use sel4_common::utils::convert_to_mut_type_ref;
+use sel4_common::utils::{convert_to_mut_type_ref, pageBitsForSize};
+use sel4_common::BIT;
 use sel4_common::{
     arch::MessageLabel,
     structures::{exception_t, seL4_IPCBuffer},
     MASK,
 };
 use sel4_cspace::interface::{cap_t, cte_t, CapTag};
-use sel4_vspace::{find_vspace_for_asid, pte_t};
+use sel4_vspace::{checkVPAlignment, find_vspace_for_asid, pptr_to_paddr, pte_t, vm_attributes_t};
 
 use crate::syscall::invocation::invoke_mmu_op::{
-    invoke_asid_control, invoke_asid_pool, invoke_page_get_address, invoke_page_map,
-    invoke_page_table_map, invoke_page_table_unmap, invoke_page_unmap,
+    invoke_asid_control, invoke_asid_pool, invoke_huge_page_map, invoke_large_page_map,
+    invoke_page_get_address, invoke_page_map, invoke_page_table_map, invoke_page_table_unmap,
+    invoke_page_unmap, invoke_small_page_map,
 };
 use crate::{
     config::maxIRQ,
@@ -85,10 +90,7 @@ fn decode_frame_invocation(
     buffer: Option<&seL4_IPCBuffer>,
 ) -> exception_t {
     match label {
-        MessageLabel::ARMPageMap => {
-            unimplemented!("ARMPageMap of DecodeFrameInvocation");
-            exception_t::EXCEPTION_NONE
-        }
+        MessageLabel::ARMPageMap => decode_frame_map(length, frame_slot, buffer),
         MessageLabel::ARMPageUnmap => {
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invoke_page_unmap(frame_slot)
@@ -96,7 +98,10 @@ fn decode_frame_invocation(
         MessageLabel::ARMPageClean_Data
         | MessageLabel::ARMPageInvalidate_Data
         | MessageLabel::ARMPageCleanInvalidate_Data
-        | MessageLabel::ARMPageUnify_Instruction => exception_t::EXCEPTION_NONE,
+        | MessageLabel::ARMPageUnify_Instruction => {
+            unimplemented!("ARMPageClean_Data | ARMPageInvalidate_Data | ARMPageCleanInvalidate_Data | ARMPageUnify_Instruction of DecodeFrameInvocation");
+            exception_t::EXCEPTION_NONE
+        }
         MessageLabel::ARMPageGetAddress => {
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             invoke_page_get_address(frame_slot.cap.get_frame_base_ptr(), call)
@@ -123,6 +128,106 @@ fn decode_asid_control(
 fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     todo!();
     exception_t::EXCEPTION_NONE
+}
+
+fn decode_frame_map(
+    length: usize,
+    frame_slot: &mut cte_t,
+    buffer: Option<&seL4_IPCBuffer>,
+) -> exception_t {
+    if length < 3 || get_extra_cap_by_index(0).is_none() {
+        debug!("ARMPageMap: Truncated message.");
+        unsafe {
+            current_syscall_error._type = seL4_TruncatedMessage;
+        }
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
+    let vaddr = get_syscall_arg(0, buffer);
+    let attr = vm_attributes_t::from_word(get_syscall_arg(2, buffer));
+    let lvl1pt_cap = get_extra_cap_by_index(0).unwrap().cap;
+    if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
+        let frame_size = frame_slot.cap.get_frame_size();
+        if unlikely(!checkVPAlignment(frame_size, vaddr)) {
+            unsafe {
+                current_syscall_error._type = seL4_AlignmentError;
+            }
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+        let frame_asid = frame_slot.cap.get_frame_mapped_asid();
+        if frame_asid != asidInvalid {
+            if frame_asid != asid {
+                debug!("ARMPageMap: Attempting to remap a frame that does not belong to the passed address space");
+                unsafe {
+                    current_syscall_error._type = seL4_InvalidCapability;
+                    current_syscall_error.invalidArgumentNumber = 0;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+
+            if frame_slot.cap.get_frame_mapped_address() != vaddr {
+                debug!("ARMPageMap: attempting to map frame into multiple addresses");
+                unsafe {
+                    current_syscall_error._type = seL4_InvalidArgument;
+                    current_syscall_error.invalidArgumentNumber = 2;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+        } else {
+            let vtop = vaddr + BIT!(pageBitsForSize(frame_size)) - 1;
+            if unlikely(vtop >= USER_TOP) {
+                unsafe {
+                    current_syscall_error._type = seL4_InvalidArgument;
+                    current_syscall_error.invalidArgumentNumber = 0;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+        }
+        let cap_asid = frame_slot.cap.get_frame_mapped_asid();
+        let cap_vaddr = frame_slot.cap.get_frame_mapped_address();
+        let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
+
+        if frame_size == ARM_Small_Page {
+            let lu_ret = lvl1pt.lookup_pt_slot(vaddr);
+            if lu_ret.status != exception_t::EXCEPTION_NONE {
+                unsafe {
+                    current_syscall_error._type = seL4_FailedLookup;
+                    current_syscall_error.failedLookupWasSource = 0;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+            let ptSlot = convert_to_mut_type_ref::<pte_t>(lu_ret.ptSlot as usize);
+            invoke_small_page_map(asid, frame_slot, ptSlot)
+        } else if frame_size == ARM_Large_Page {
+            let lu_ret = lvl1pt.lookup_pd_slot(vaddr);
+            if lu_ret.status != exception_t::EXCEPTION_NONE {
+                unsafe {
+                    current_syscall_error._type = seL4_FailedLookup;
+                    current_syscall_error.failedLookupWasSource = 0;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+            let pdSlot = convert_to_mut_type_ref::<pte_t>(lu_ret.pdSlot as usize);
+            invoke_large_page_map(asid, frame_slot, pdSlot)
+        } else if frame_size == ARM_Huge_Page {
+            let lu_ret = lvl1pt.lookup_pud_slot(vaddr);
+            if lu_ret.status != exception_t::EXCEPTION_NONE {
+                unsafe {
+                    current_syscall_error._type = seL4_FailedLookup;
+                    current_syscall_error.failedLookupWasSource = 0;
+                }
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
+            let pudSlot = convert_to_mut_type_ref::<pte_t>(lu_ret.pudSlot as usize);
+            invoke_large_page_map(asid, frame_slot, pudSlot)
+        } else {
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+    } else {
+        return exception_t::EXCEPTION_SYSCALL_ERROR;
+    }
 }
 
 fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
@@ -182,7 +287,7 @@ fn decode_page_table_map(
             }
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
-        if unsafe { ((*pd_ret.pdSlot).0 & 0x3) != 3 || ((*pd_ret.pdSlot).0 & 0x3) != 1 } {
+        if unsafe { (*pd_ret.pdSlot).get_pde_type() != 3 || (*pd_ret.pdSlot).get_pde_type() != 1 } {
             debug!("RISCVPageTableMap: All objects mapped at this address");
             unsafe {
                 current_syscall_error._type = seL4_DeleteFirst;
@@ -198,7 +303,7 @@ fn decode_page_table_map(
 }
 
 fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(&mut pte_t, usize)> {
-    if lvl1pt_cap.get_cap_type() != CapTag::CapPageTableCap
+    if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
         || lvl1pt_cap.get_pt_is_mapped() == asidInvalid
     {
         debug!("ARMMMUInvocation: Invalid top-level PageTable.");
