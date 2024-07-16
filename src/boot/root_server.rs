@@ -202,21 +202,8 @@ fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
     }
     #[cfg(target_arch = "aarch64")]
     {
-        //     asid_pool_t *ap = ASID_POOL_PTR(pptr_of_cap(it_ap_cap));
-        //     asid_map_t asid_map = asid_map_asid_map_vspace_new(
-        //                               /* vspace_root: reference to vspace root page table object */
-        //                               (word_t)cap_vtable_root_get_basePtr(it_vspace_cap)
-        //                           );
-        //     ap->array[IT_ASID] = asid_map;
-        //     armKSASIDTable[IT_ASID >> asidLowBits] = ap;
 
-        log::warn!("asid_init needed to initialize");
-        let ap = it_ap_cap.get_cap_ptr();
-        // Why 8? because size_of::<usize> == 8
-        // The size of item in the array is 8 bytes
-        let ptr = (ap + 8 * IT_ASID) as *mut usize;
-        let asid_map = it_pd_cap.get_pgd_base_ptr();
-        log::warn!("todo: write armKSASIDTable");
+        write_it_asid_pool(&it_ap_cap, &it_pd_cap);
     }
     true
 }
