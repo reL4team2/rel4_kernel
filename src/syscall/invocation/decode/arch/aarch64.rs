@@ -5,6 +5,8 @@ use crate::syscall::invocation::decode::current_syscall_error;
 use crate::syscall::ThreadState;
 use crate::syscall::{current_lookup_fault, get_syscall_arg, set_thread_state, unlikely};
 use log::debug;
+use sel4_common::arch::maskVMRights;
+use sel4_common::cap_rights::seL4_CapRights_t;
 use sel4_common::sel4_config::{
     asidInvalid, seL4_AlignmentError, seL4_FailedLookup, seL4_RangeError, ARM_Huge_Page,
     ARM_Large_Page, ARM_Small_Page,
@@ -22,7 +24,7 @@ use sel4_common::{
     MASK,
 };
 use sel4_cspace::interface::{cap_t, cte_t, CapTag};
-use sel4_vspace::{checkVPAlignment, find_vspace_for_asid, pptr_to_paddr, vm_attributes_t, PTE};
+use sel4_vspace::{checkVPAlignment, find_vspace_for_asid, makeUser3rdLevel, make_user_1st_level, make_user_2nd_level, pptr_to_paddr, vm_attributes_t, PDE, PTE, PUDE};
 
 use crate::syscall::invocation::invoke_mmu_op::{
     invoke_asid_control, invoke_asid_pool, invoke_huge_page_map, invoke_large_page_map,
@@ -145,6 +147,8 @@ fn decode_frame_map(
     let vaddr = get_syscall_arg(0, buffer);
     let attr = vm_attributes_t::from_word(get_syscall_arg(2, buffer));
     let lvl1pt_cap = get_extra_cap_by_index(0).unwrap().cap;
+	let frame_vm_rights = unsafe { core::mem::transmute(frame_slot.cap.get_frame_vm_rights()) };
+	let vm_rights = maskVMRights(frame_vm_rights, seL4_CapRights_t::from_word(get_syscall_arg(1, buffer)));
     if let Some((lvl1pt, asid)) = get_vspace(&lvl1pt_cap) {
         let frame_size = frame_slot.cap.get_frame_size();
         if unlikely(!checkVPAlignment(frame_size, vaddr)) {
@@ -182,8 +186,6 @@ fn decode_frame_map(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
         }
-        let cap_asid = frame_slot.cap.get_frame_mapped_asid();
-        let cap_vaddr = frame_slot.cap.get_frame_mapped_address();
         let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
 
         if frame_size == ARM_Small_Page {
@@ -197,7 +199,7 @@ fn decode_frame_map(
             }
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
             let ptSlot = convert_to_mut_type_ref::<PTE>(lu_ret.ptSlot as usize);
-            invoke_small_page_map(asid, frame_slot, ptSlot)
+            invoke_small_page_map(vaddr,asid, frame_slot, makeUser3rdLevel(base, vm_rights, attr),ptSlot)
         } else if frame_size == ARM_Large_Page {
             let lu_ret = lvl1pt.lookup_pd_slot(vaddr);
             if lu_ret.status != exception_t::EXCEPTION_NONE {
@@ -208,8 +210,8 @@ fn decode_frame_map(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            let pdSlot = convert_to_mut_type_ref::<PTE>(lu_ret.pdSlot as usize);
-            invoke_large_page_map(asid, frame_slot, pdSlot)
+            let pdSlot = convert_to_mut_type_ref::<PDE>(lu_ret.pdSlot as usize);
+            invoke_large_page_map(vaddr,asid, frame_slot,make_user_2nd_level(base, vm_rights, attr), pdSlot)
         } else if frame_size == ARM_Huge_Page {
             let lu_ret = lvl1pt.lookup_pud_slot(vaddr);
             if lu_ret.status != exception_t::EXCEPTION_NONE {
@@ -220,8 +222,8 @@ fn decode_frame_map(
                 return exception_t::EXCEPTION_SYSCALL_ERROR;
             }
             set_thread_state(get_currenct_thread(), ThreadState::ThreadStateRestart);
-            let pudSlot = convert_to_mut_type_ref::<PTE>(lu_ret.pudSlot as usize);
-            invoke_large_page_map(asid, frame_slot, pudSlot)
+            let pudSlot = convert_to_mut_type_ref::<PUDE>(lu_ret.pudSlot as usize);
+            invoke_huge_page_map(vaddr,asid, frame_slot,make_user_1st_level(base, vm_rights, attr), pudSlot)
         } else {
             return exception_t::EXCEPTION_SYSCALL_ERROR;
         }
