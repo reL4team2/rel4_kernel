@@ -306,7 +306,7 @@ fn decode_page_table_map(
 
 fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(&mut PTE, usize)> {
     if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
-        || lvl1pt_cap.get_pt_is_mapped() == asidInvalid
+        || lvl1pt_cap.get_pgd_is_mapped() == asidInvalid
     {
         debug!("ARMMMUInvocation: Invalid top-level PageTable.");
         unsafe {
