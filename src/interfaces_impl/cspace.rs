@@ -10,13 +10,13 @@ use sel4_cspace::compatibility::{ZombieType_ZombieTCB, Zombie_new};
 use sel4_cspace::interface::{cap_t, finaliseCap_ret, CapTag};
 use sel4_ipc::{endpoint_t, notification_t, Transfer};
 use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t};
-use sel4_vspace::{
-    asid_pool_t, asid_t, delete_asid, delete_asid_pool, find_vspace_for_asid, unmapPage, PTE,
-};
+use sel4_vspace::{asid_pool_t, asid_t, delete_asid, delete_asid_pool, find_vspace_for_asid, PTE};
 
 #[cfg(target_arch = "riscv64")]
 #[no_mangle]
 pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
+    use sel4_vspace::unmapPage;
+
     let mut fc_ret = finaliseCap_ret::default();
     match cap.get_cap_type() {
         CapTag::CapFrameCap => {
@@ -67,8 +67,63 @@ pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
 }
 
 #[cfg(target_arch = "aarch64")]
-extern "C" {
-    pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret;
+pub fn Arch_finaliseCap(cap: &cap_t, final_: bool) -> finaliseCap_ret {
+    use sel4_common::utils::ptr_to_mut;
+    use sel4_vspace::{unmapPage, unmap_page_directory, unmap_page_upper_directory, PDE, PUDE};
+
+    let mut fc_ret = finaliseCap_ret::default();
+    match cap.get_cap_type() {
+        CapTag::CapFrameCap => {
+            if cap.get_frame_mapped_asid() != 0 {
+                match unmapPage(
+                    cap.get_frame_size(),
+                    cap.get_frame_mapped_asid(),
+                    cap.get_frame_mapped_address(),
+                    cap.get_frame_base_ptr(),
+                ) {
+                    Err(fault) => unsafe { current_lookup_fault = fault },
+                    _ => {}
+                }
+            }
+        }
+        CapTag::CapPageGlobalDirectoryCap => {
+            if final_ && cap.get_pgd_is_mapped() == 1 {
+                deleteASID(cap.get_pgd_is_mapped(), cap.get_pgd_base_ptr() as _);
+            }
+        }
+        CapTag::CapPageUpperDirectoryCap => {
+            if final_ && cap.get_pud_is_mapped() == 1 {
+                let pud = ptr_to_mut(cap.get_pt_base_ptr() as *mut PUDE);
+                unmap_page_upper_directory(
+                    cap.get_pud_mapped_asid(),
+                    cap.get_pud_mapped_address(),
+                    pud,
+                );
+            }
+        }
+        CapTag::CapPageDirectoryCap => {
+            if final_ && cap.get_pd_is_mapped() == 1 {
+                let pd = ptr_to_mut(cap.get_pt_base_ptr() as *mut PDE);
+                unmap_page_directory(cap.get_pd_mapped_asid(), cap.get_pd_mapped_address(), pd);
+            }
+        }
+        CapTag::CapPageTableCap => {
+            if final_ && cap.get_pt_is_mapped() == 1 {
+                let pte = ptr_to_mut(cap.get_pt_base_ptr() as *mut PTE);
+                pte.unmap_page_table(cap.get_pt_mapped_asid(), cap.get_pt_mapped_address());
+            }
+        }
+        CapTag::CapASIDPoolCap => {
+            if final_ {
+                deleteASIDPool(cap.get_asid_base(), cap.get_asid_pool() as *mut asid_pool_t);
+            }
+        }
+        CapTag::CapASIDControlCap => {}
+        _ => unimplemented!("finaliseCap: {:?}", cap.get_cap_type()),
+    }
+    fc_ret.remainder = cap_t::new_null_cap();
+    fc_ret.cleanupInfo = cap_t::new_null_cap();
+    fc_ret
 }
 
 #[no_mangle]
@@ -77,11 +132,11 @@ pub fn finaliseCap(cap: &cap_t, _final: bool, _exposed: bool) -> finaliseCap_ret
 
     if cap.isArchCap() {
         // For Removing Warnings
-        #[cfg(target_arch = "aarch64")]
-        unsafe {
-            return Arch_finaliseCap(cap, _final);
-        }
-        #[cfg(target_arch = "riscv64")]
+        // #[cfg(target_arch = "aarch64")]
+        // unsafe {
+        //     return Arch_finaliseCap(cap, _final);
+        // }
+        // #[cfg(target_arch = "riscv64")]
         return Arch_finaliseCap(cap, _final);
     }
     match cap.get_cap_type() {
