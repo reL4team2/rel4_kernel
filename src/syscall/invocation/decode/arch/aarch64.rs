@@ -1,4 +1,6 @@
 use crate::arch::set_vm_root_for_flush;
+use crate::boot::rootserver;
+use crate::compatibility::setThreadState;
 use crate::config::{seL4_ASIDPoolBits, USER_TOP};
 use crate::kernel::boot::{current_extra_caps, get_extra_cap_by_index};
 use crate::syscall::invocation::decode::current_syscall_error;
@@ -30,9 +32,7 @@ use sel4_common::{BIT, IS_ALIGNED};
 use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
 
 use sel4_vspace::{
-    asid_map_t, asid_pool_t, find_vspace_for_asid, get_asid_pool_by_index, makeUser3rdLevel,
-    make_user_1st_level, make_user_2nd_level, pptr_to_paddr, set_asid_pool_by_index,
-    vm_attributes_t, PDE, PGDE, PTE, PUDE,
+    asid_map_t, asid_pool_t, asid_t, find_vspace_for_asid, get_asid_pool_by_index, makeUser3rdLevel, make_user_1st_level, make_user_2nd_level, paddr_t, pptr_to_paddr, set_asid_pool_by_index, set_vm_root, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE
 };
 
 use crate::syscall::invocation::invoke_mmu_op::{
@@ -141,7 +141,7 @@ fn decode_page_table_invocation(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let pd_slot = PTE(vspace_root).lookup_pd_slot(vaddr);
+    let pd_slot = PGDE::new_from_pte(vspace_root).lookup_pd_slot(vaddr);
 
     if pd_slot.status != exception_t::EXCEPTION_NONE {
         global_ops!(current_syscall_error._type = seL4_FailedLookup);
@@ -490,7 +490,7 @@ fn decode_frame_map(
     // frame_slot.cap.set_frame_mapped_asid(asid);
     // frame_slot.cap.set_frame_mapped_address(vaddr);
 
-    let vspace_root = PTE(vspace_root);
+    let vspace_root = PGDE::new_from_pte(vspace_root);
     let base = pptr_to_paddr(frame_slot.cap.get_frame_base_ptr());
     match frame_size {
         ARM_Small_Page => {
@@ -729,7 +729,104 @@ fn decode_vspace_root_invocation(
     cte: &mut cte_t,
     buffer: Option<&seL4_IPCBuffer>,
 ) -> exception_t {
-    todo!();
+    match label {
+        MessageLabel::ARMVSpaceClean_Data
+        | MessageLabel::ARMVSpaceInvalidate_Data
+        | MessageLabel::ARMVSpaceCleanInvalidate_Data
+        | MessageLabel::ARMVSpaceUnify_Instruction => {
+            if length < 2 {
+                debug!("VSpaceRoot Flush: Truncated message.");
+                unsafe {
+                    current_syscall_error._type = seL4_TruncatedMessage;
+                    return exception_t::EXCEPTION_SYSCALL_ERROR;
+                }
+            }
+            let start = get_syscall_arg(0, buffer);
+            let end = get_syscall_arg(1, buffer);
+            if end <= start {
+                debug!("VSpaceRoot Flush: Invalid range.");
+                unsafe {
+                    current_syscall_error._type = seL4_InvalidArgument;
+                    current_syscall_error.invalidArgumentNumber = 1;
+                    return exception_t::EXCEPTION_SYSCALL_ERROR;
+                }
+            }
+            if end > USER_TOP {
+                debug!("VSpaceRoot Flush: Exceed the user addressable region.");
+                unsafe { current_syscall_error._type = seL4_IllegalOperation };
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+            if !cte.cap.is_valid_native_root() {
+                unsafe {
+                    current_syscall_error._type = seL4_InvalidCapability;
+                    current_syscall_error.invalidCapNumber = 0
+                };
+                return exception_t::EXCEPTION_SYSCALL_ERROR;
+            }
+			let vspace_root = PGDE::new_from_pte(cte.cap.get_pgd_base_ptr());
+			let asid=cte.cap.get_asid_base();
+			let find_ret = find_vspace_for_asid(asid);
+			if find_ret.status != exception_t::EXCEPTION_NONE{
+				debug!("VSpaceRoot Flush: No VSpace for ASID");
+				unsafe {
+					current_syscall_error._type = seL4_FailedLookup;
+					current_syscall_error.failedLookupWasSource = 0;
+					return exception_t::EXCEPTION_SYSCALL_ERROR;
+				}
+			}
+			if find_ret.vspace_root.unwrap() as usize  != vspace_root.get_ptr(){
+				debug!("VSpaceRoot Flush: Invalid VSpace Cap");
+				unsafe{
+					current_syscall_error._type = seL4_InvalidCapability;
+					current_syscall_error.invalidCapNumber = 0;
+				}
+				return exception_t::EXCEPTION_SYSCALL_ERROR;
+			}
+			let resolve_ret = vspace_root.lookup_frame(start);
+			if !resolve_ret.valid {
+				get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
+				return exception_t::EXCEPTION_NONE;
+			}
+			let page_base_start = start & !MASK!(pageBitsForSize(resolve_ret.frameSize));
+			let page_base_end = (end-1) & !MASK!(pageBitsForSize(resolve_ret.frameSize));
+			if page_base_start != page_base_end{
+				unsafe{
+					current_syscall_error._type=seL4_RangeError;
+					current_syscall_error.rangeErrorMin = start;
+					current_syscall_error.rangeErrorMax = page_base_start + MASK!(pageBitsForSize(resolve_ret.frameSize));
+				}
+				return exception_t::EXCEPTION_SYSCALL_ERROR;
+			}
+			let pstart = resolve_ret.frameBase + start & MASK!(pageBitsForSize(resolve_ret.frameSize));
+			get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
+			return decode_vspace_flush_invocation(label,find_ret.vspace_root.unwrap() as usize,asid,start,end,paddr_t::from(pstart));
+        }
+        _ => {
+            unsafe { current_syscall_error._type = seL4_IllegalOperation };
+            return exception_t::EXCEPTION_SYSCALL_ERROR;
+        }
+    }
+}
+
+fn decode_vspace_flush_invocation(
+	label: MessageLabel,
+	vspace:usize,
+	asid:asid_t,
+	start:vptr_t,
+	end:vptr_t,
+	pstart:paddr_t,
+) ->exception_t{
+	if start < end{		
+		let root_switched = set_vm_root_for_flush(vspace, asid);
+		log::warn!(
+            "need to flush cache for decode_page_clean_invocation label: {:?}",
+            label
+        );
+		todo!();
+		// if root_switched {
+		// 	set_vm_root(vspace);
+		// }
+	}
     exception_t::EXCEPTION_NONE
 }
 
@@ -806,7 +903,7 @@ fn decode_page_upper_directory_invocation(
     // Ensure that pgd is aligned 4K.
     assert!(pgd & MASK!(PAGE_BITS) == 0);
 
-    let pgd_slot = PTE(pgd).lookup_pgd_slot(vaddr);
+    let pgd_slot = PGDE::new_from_pte(pgd).lookup_pgd_slot(vaddr);
 
     if unlikely(ptr_to_ref(pgd_slot.pgdSlot).get_present()) {
         global_ops!(current_syscall_error._type = seL4_DeleteFirst);
@@ -892,7 +989,7 @@ fn decode_page_directory_invocation(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let pud_slot = PTE(vspace_root).lookup_pud_slot(vaddr);
+    let pud_slot = PGDE::new_from_pte(vspace_root).lookup_pud_slot(vaddr);
 
     if pud_slot.status != exception_t::EXCEPTION_NONE {
         global_ops!(current_syscall_error._type = seL4_FailedLookup);
