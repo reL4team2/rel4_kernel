@@ -19,11 +19,11 @@ use sel4_task::{get_currenct_thread, set_thread_state, tcb_t, ThreadState};
 
 use crate::{
     kernel::boot::{current_syscall_error, get_extra_cap_by_index},
-    syscall::{
-        is_valid_vtable_root,
-        utils::{check_ipc_buffer_vaild, check_prio, get_syscall_arg},
-    },
+    syscall::utils::{check_ipc_buffer_vaild, check_prio, get_syscall_arg},
 };
+
+#[cfg(target_arch = "riscv64")]
+use crate::syscall::is_valid_vtable_root;
 
 use super::super::invoke_tcb::*;
 

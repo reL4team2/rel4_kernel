@@ -13,13 +13,13 @@ use crate::boot::{
     rust_init_freemem,
 };
 use crate::config::*;
-use crate::ffi::*;
 use crate::structures::*;
 use log::debug;
 use sel4_vspace::*;
 
 use super::arm_gic::gic_v2::gic_v2::cpu_initLocalIRQController;
 
+#[allow(unused)]
 pub fn init_cpu() -> bool {
     // use arch::aarch64::arm_gic::gic_v2;
 

@@ -1,5 +1,6 @@
 pub mod handler;
 
+#[cfg(target_arch="riscv64")]
 use crate::BIT;
 #[cfg(target_arch = "riscv64")]
 use core::arch::asm;
@@ -86,20 +87,16 @@ pub fn deletedIRQHandler(irq: usize) {
     setIRQState(IRQState::IRQInactive, irq);
 }
 #[inline]
+#[cfg(target_arch = "riscv64")]
 pub fn set_sie_mask(_mask_high: usize) {
-    #[cfg(target_arch = "aarch64")]
-    todo!();
-    #[cfg(target_arch = "riscv64")]
     unsafe {
         let _temp: usize;
         asm!("csrrs {0},sie,{1}",out(reg)_temp,in(reg)_mask_high);
     }
 }
 #[inline]
+#[cfg(target_arch = "riscv64")]
 pub fn clear_sie_mask(_mask_low: usize) {
-    #[cfg(target_arch = "aarch64")]
-    todo!();
-    #[cfg(target_arch = "riscv64")]
     unsafe {
         let _temp: usize;
         asm!("csrrc {0},sie,{1}",out(reg)_temp,in(reg)_mask_low);

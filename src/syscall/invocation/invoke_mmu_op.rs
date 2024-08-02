@@ -1,25 +1,28 @@
 #[cfg(target_arch = "aarch64")]
 use core::arch::asm;
-use sel4_common::arch::{maskVMRights, ArchReg};
-use sel4_common::cap_rights::seL4_CapRights_t;
-use sel4_common::utils::MAX_FREE_INDEX;
+use sel4_common::arch::ArchReg;
 #[cfg(target_arch = "aarch64")]
 use sel4_common::BIT;
-use sel4_common::MASK;
+#[cfg(target_arch = "riscv64")]
 use sel4_common::{
-    message_info::seL4_MessageInfo_t,
-    sel4_config::*,
-    structures::exception_t,
-    utils::{convert_to_mut_type_ref, pageBitsForSize},
+    arch::maskVMRights,
+    cap_rights::seL4_CapRights_t,
+    utils::{pageBitsForSize, MAX_FREE_INDEX},
+    MASK,
 };
-use sel4_cspace::interface::{cap_t, cte_insert, cte_t};
-use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
-use sel4_vspace::{
-    asid_pool_t, pptr_t, pptr_to_paddr, set_asid_pool_by_index, unmapPage, unmap_page_table,
-    vm_attributes_t, PTEFlags, PTE,
+use sel4_common::{
+    message_info::seL4_MessageInfo_t, sel4_config::*, structures::exception_t,
+    utils::convert_to_mut_type_ref,
 };
 #[cfg(target_arch = "riscv64")]
-use sel4_vspace::{copyGlobalMappings, sfence};
+use sel4_cspace::interface::cte_insert;
+use sel4_cspace::interface::{cap_t, cte_t};
+use sel4_task::{get_currenct_thread, set_thread_state, ThreadState};
+use sel4_vspace::{asid_pool_t, pptr_to_paddr, unmapPage, unmap_page_table, PTE};
+#[cfg(target_arch = "riscv64")]
+use sel4_vspace::{
+    copyGlobalMappings, pptr_t, set_asid_pool_by_index, sfence, vm_attributes_t, PTEFlags,
+};
 #[cfg(target_arch = "aarch64")]
 use sel4_vspace::{invalidate_tlb_by_asid_va, PDE, PUDE};
 
@@ -50,6 +53,7 @@ pub fn invoke_page_table_map(
     sfence();
     exception_t::EXCEPTION_NONE
 }
+#[allow(unused)]
 #[cfg(target_arch = "aarch64")]
 pub fn invoke_page_table_map(
     pt_cap: &mut cap_t,
@@ -106,6 +110,8 @@ pub fn invoke_page_unmap(frame_slot: &mut cte_t) -> exception_t {
     frame_slot.cap.set_pt_mapped_asid(asidInvalid);
     exception_t::EXCEPTION_NONE
 }
+
+#[cfg(target_arch = "riscv64")]
 pub fn invoke_page_map(
     _frame_cap: &mut cap_t,
     w_rights_mask: usize,
@@ -208,6 +214,7 @@ pub fn invoke_small_page_map(
     exception_t::EXCEPTION_NONE
 }
 
+#[cfg(target_arch = "riscv64")]
 pub fn invoke_asid_control(
     frame_ptr: pptr_t,
     slot: &mut cte_t,
@@ -244,6 +251,7 @@ pub fn invoke_asid_pool(
     exception_t::EXCEPTION_NONE
 }
 
+#[allow(unused)]
 #[cfg(target_arch = "aarch64")]
 pub fn invoke_asid_pool(
     asid: usize,

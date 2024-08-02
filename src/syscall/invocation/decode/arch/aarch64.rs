@@ -1,6 +1,4 @@
 use crate::arch::set_vm_root_for_flush;
-use crate::boot::rootserver;
-use crate::compatibility::setThreadState;
 use crate::config::{seL4_ASIDPoolBits, USER_TOP};
 use crate::kernel::boot::{current_extra_caps, get_extra_cap_by_index};
 use crate::syscall::invocation::decode::current_syscall_error;
@@ -34,7 +32,7 @@ use sel4_cspace::interface::{cap_t, cte_insert, cte_t, CapTag};
 use sel4_vspace::{
     asid_map_t, asid_pool_t, asid_t, find_vspace_for_asid, get_asid_pool_by_index,
     makeUser3rdLevel, make_user_1st_level, make_user_2nd_level, paddr_t, pptr_to_paddr,
-    set_asid_pool_by_index, set_vm_root, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
+    set_asid_pool_by_index, vm_attributes_t, vptr_t, PDE, PGDE, PTE, PUDE,
 };
 
 use crate::syscall::invocation::invoke_mmu_op::{
@@ -172,7 +170,7 @@ fn decode_page_clean_invocation(
     label: MessageLabel,
     length: usize,
     cte: &mut cte_t,
-    call: bool,
+    _call: bool,
     buffer: Option<&seL4_IPCBuffer>,
 ) -> exception_t {
     if length < 2 {
@@ -186,7 +184,7 @@ fn decode_page_clean_invocation(
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
 
-    let vaddr = cte.cap.get_frame_mapped_address();
+    let _vaddr = cte.cap.get_frame_mapped_address();
     let asid = cte.cap.get_frame_mapped_asid();
     let find_ret = find_vspace_for_asid(asid);
 
@@ -214,7 +212,7 @@ fn decode_page_clean_invocation(
         global_ops!(current_syscall_error.invalidArgumentNumber = 0);
         return exception_t::EXCEPTION_SYSCALL_ERROR;
     }
-    let pstart = pptr_to_paddr(cte.cap.get_frame_base_ptr() + start);
+    let _pstart = pptr_to_paddr(cte.cap.get_frame_base_ptr() + start);
     get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
 
     if start < end {
@@ -674,6 +672,7 @@ fn decode_frame_map(
     // }
 }
 
+#[allow(unused)]
 fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
     if !pt_cte.is_final_cap() {
         debug!("RISCVPageTableUnmap: cannot unmap if more than once cap exists");
@@ -689,41 +688,41 @@ fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
 
 // FIXED check pgd_is_mapped
 // vtable_root is pgd, not pd,
-fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(PTE, usize)> {
-    if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
-        || lvl1pt_cap.get_pgd_is_mapped() == asidInvalid
-    {
-        debug!("ARMMMUInvocation: Invalid top-level PageTable.");
-        unsafe {
-            current_syscall_error._type = seL4_InvalidCapability;
-            current_syscall_error.invalidCapNumber = 1;
-        }
-        return None;
-    }
+// fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(PTE, usize)> {
+//     if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
+//         || lvl1pt_cap.get_pgd_is_mapped() == asidInvalid
+//     {
+//         debug!("ARMMMUInvocation: Invalid top-level PageTable.");
+//         unsafe {
+//             current_syscall_error._type = seL4_InvalidCapability;
+//             current_syscall_error.invalidCapNumber = 1;
+//         }
+//         return None;
+//     }
 
-    let lvl1pt = lvl1pt_cap.get_pgd_base_ptr();
-    let asid = lvl1pt_cap.get_pgd_mapped_asid();
-    let find_ret = find_vspace_for_asid(asid);
-    if find_ret.status != exception_t::EXCEPTION_NONE {
-        debug!("ARMMMUInvocation: ASID lookup failed1");
-        unsafe {
-            current_lookup_fault = find_ret.lookup_fault.unwrap();
-            current_syscall_error._type = seL4_FailedLookup;
-            current_syscall_error.failedLookupWasSource = 0;
-        }
-        return None;
-    }
+//     let lvl1pt = lvl1pt_cap.get_pgd_base_ptr();
+//     let asid = lvl1pt_cap.get_pgd_mapped_asid();
+//     let find_ret = find_vspace_for_asid(asid);
+//     if find_ret.status != exception_t::EXCEPTION_NONE {
+//         debug!("ARMMMUInvocation: ASID lookup failed1");
+//         unsafe {
+//             current_lookup_fault = find_ret.lookup_fault.unwrap();
+//             current_syscall_error._type = seL4_FailedLookup;
+//             current_syscall_error.failedLookupWasSource = 0;
+//         }
+//         return None;
+//     }
 
-    if find_ret.vspace_root.unwrap() as usize != lvl1pt {
-        debug!("ARMMMUInvocation: ASID lookup failed");
-        unsafe {
-            current_syscall_error._type = seL4_InvalidCapability;
-            current_syscall_error.invalidCapNumber = 1;
-        }
-        return None;
-    }
-    Some((PTE(lvl1pt), asid))
-}
+//     if find_ret.vspace_root.unwrap() as usize != lvl1pt {
+//         debug!("ARMMMUInvocation: ASID lookup failed");
+//         unsafe {
+//             current_syscall_error._type = seL4_InvalidCapability;
+//             current_syscall_error.invalidCapNumber = 1;
+//         }
+//         return None;
+//     }
+//     Some((PTE(lvl1pt), asid))
+// }
 
 fn decode_vspace_root_invocation(
     label: MessageLabel,
@@ -825,10 +824,10 @@ fn decode_vspace_flush_invocation(
     asid: asid_t,
     start: vptr_t,
     end: vptr_t,
-    pstart: paddr_t,
+    _pstart: paddr_t,
 ) -> exception_t {
     if start < end {
-        let root_switched = set_vm_root_for_flush(vspace, asid);
+        let _root_switched = set_vm_root_for_flush(vspace, asid);
         log::warn!(
             "need to flush cache for decode_page_clean_invocation label: {:?}",
             label
