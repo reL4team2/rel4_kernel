@@ -14,9 +14,7 @@ use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t};
 use sel4_vspace::find_vspace_for_asid;
 use sel4_vspace::{asid_pool_t, asid_t, delete_asid, delete_asid_pool, unmapPage, PTE};
 #[cfg(target_arch = "aarch64")]
-use sel4_vspace::{
-    unmap_page_directory, unmap_page_table, unmap_page_upper_directory, PDE, PGDE, PUDE,
-};
+use sel4_vspace::{unmap_page_directory, unmap_page_table, unmap_page_upper_directory, PDE, PUDE};
 
 #[cfg(target_arch = "riscv64")]
 #[no_mangle]

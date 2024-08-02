@@ -51,20 +51,21 @@ pub fn get_n_paging(v_reg: v_region_t, bits: usize) -> usize {
     (end - start) / BIT!(bits)
 }
 
+#[cfg(target_arch = "riscv64")]
 pub fn arch_get_n_paging(it_v_reg: v_region_t) -> usize {
     let mut n: usize = 0;
-    #[cfg(target_arch = "riscv64")]
     for i in 0..CONFIG_PT_LEVELS - 1 {
         n += get_n_paging(it_v_reg, RISCV_GET_LVL_PGSIZE_BITS(i));
     }
-    #[cfg(target_arch = "aarch64")]
-    // PGD_INDEX_OFFSET + PD_INDEX_OFFSET
-    {
-        n = get_n_paging(it_v_reg, 3 * PT_INDEX_BITS + PAGE_SIZE_BITS)
-            + get_n_paging(it_v_reg, PT_INDEX_BITS + PAGE_SIZE_BITS + PT_INDEX_BITS)
-            + get_n_paging(it_v_reg, PT_INDEX_BITS + PAGE_SIZE_BITS);
-    }
-    return n;
+    n
+}
+
+#[cfg(target_arch = "aarch64")]
+pub fn arch_get_n_paging(it_v_reg: v_region_t) -> usize {
+    let n = get_n_paging(it_v_reg, 3 * PT_INDEX_BITS + PAGE_SIZE_BITS)
+        + get_n_paging(it_v_reg, PT_INDEX_BITS + PAGE_SIZE_BITS + PT_INDEX_BITS)
+        + get_n_paging(it_v_reg, PT_INDEX_BITS + PAGE_SIZE_BITS);
+    n
 }
 
 pub fn write_slot(ptr: *mut cte_t, cap: cap_t) {

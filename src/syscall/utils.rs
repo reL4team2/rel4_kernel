@@ -146,6 +146,7 @@ pub fn safe_unbind_notification(tcb: &mut tcb_t) {
 }
 
 #[inline]
+#[cfg(target_arch = "riscv64")]
 pub fn is_valid_vtable_root(cap: &cap_t) -> bool {
     cap.get_cap_type() == CapTag::CapPageTableCap && cap.get_pt_is_mapped() != 0
 }

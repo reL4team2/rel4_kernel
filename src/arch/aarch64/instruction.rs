@@ -11,6 +11,7 @@ macro_rules! mrs {
     };
 }
 
+#[allow(unused)]
 /// Set the value of the system register
 macro_rules! msr {
     ($reg: literal, $v: literal) => {
