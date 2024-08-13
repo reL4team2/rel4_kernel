@@ -32,7 +32,7 @@ pub fn invoke_page_table_unmap(cap: &mut cap_t) -> exception_t {
     if cap.get_pt_is_mapped() != 0 {
         let pt = convert_to_mut_type_ref::<PTE>(cap.get_pt_base_ptr());
         unmap_page_table(cap.get_pt_mapped_asid(), cap.get_pt_mapped_address(), pt);
-        clear_memory(pt.get_ptr() as *mut u8, seL4_PageTableBits)
+        clear_memory(pt.get_mut_ptr() as *mut u8, seL4_PageTableBits)
     }
     cap.set_pt_is_mapped(0);
     exception_t::EXCEPTION_NONE

@@ -41,7 +41,7 @@ pub fn handleFault(tptr: *mut tcb_t) {
 }
 
 #[no_mangle]
-pub extern "C" fn lookupCapAndSlot(thread: *const tcb_t, cPtr: usize) -> lookupCapAndSlot_ret_t {
+pub extern "C" fn lookupCapAndSlot(thread: *mut tcb_t, cPtr: usize) -> lookupCapAndSlot_ret_t {
     // let lu_ret = lookupSlot(thread, cPtr);
     let lu_ret = unsafe { (*thread).lookup_slot(cPtr) };
     if lu_ret.status != exception_t::EXCEPTION_NONE {

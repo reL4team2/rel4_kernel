@@ -62,7 +62,7 @@ pub fn getSyscallArg(i: usize, ipc_buffer: *const usize) -> usize {
 }
 
 #[inline]
-pub fn lookup_extra_caps_with_buf(thread: &tcb_t, buf: Option<&seL4_IPCBuffer>) -> exception_t {
+pub fn lookup_extra_caps_with_buf(thread: &mut tcb_t, buf: Option<&seL4_IPCBuffer>) -> exception_t {
     unsafe {
         match thread.lookup_extra_caps_with_buf(&mut current_extra_caps.excaprefs, buf) {
             Ok(()) => {}

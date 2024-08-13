@@ -604,7 +604,7 @@ unsafe fn rust_populate_bi_frame(
     bi.initThreadDomain = ksDomSchedule[ksDomScheduleIdx].domain;
     bi.extraLen = extra_bi_size;
 
-    ndks_boot.bi_frame = bi as *const seL4_BootInfo as *mut seL4_BootInfo;
+    ndks_boot.bi_frame = bi as *mut seL4_BootInfo;
     ndks_boot.slot_pos_cur = seL4_NumInitialCaps;
 }
 
