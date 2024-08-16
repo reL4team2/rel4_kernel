@@ -22,7 +22,7 @@ pub static mut intStateIRQTable: [usize; maxIRQ + 1] = [0; maxIRQ + 1];
 pub static mut intStateIRQNode: pptr_t = 0;
 
 #[no_mangle]
-#[link_section = ".boot.bss"]
+// #[link_section = ".boot.bss"]
 pub static mut active_irq: [usize; CONFIG_MAX_NUM_NODES] = [0; CONFIG_MAX_NUM_NODES];
 
 #[cfg(feature = "ENABLE_SMP")]

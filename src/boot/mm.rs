@@ -16,10 +16,10 @@ static mut avail_reg: [region_t; MAX_NUM_FREEMEM_REG] =
 pub static mut res_reg: [region_t; NUM_RESERVED_REGIONS] =
     [region_t { start: 0, end: 0 }; NUM_RESERVED_REGIONS];
 
-#[link_section = ".boot.bss"]
+// #[link_section = ".boot.bss"]
 pub static mut avail_p_regs_size: usize = 0;
 
-#[link_section = ".boot.bss"]
+// #[link_section = ".boot.bss"]
 pub static mut avail_p_regs_addr: usize = 0;
 
 pub fn rust_init_freemem(
