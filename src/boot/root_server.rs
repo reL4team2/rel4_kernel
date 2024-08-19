@@ -123,6 +123,7 @@ pub fn root_server_init(
     Some((initial, root_cnode_cap))
 }
 
+#[no_mangle]
 unsafe fn create_initial_thread(
     root_cnode_cap: &cap_t,
     it_pd_cap: &cap_t,
@@ -172,6 +173,7 @@ unsafe fn create_initial_thread(
         ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
         ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
     }
+    tcb.domain = ksCurDomain;
     #[cfg(feature = "ENABLE_SMP")]
     {
         tcb.tcbAffinity = 0;
