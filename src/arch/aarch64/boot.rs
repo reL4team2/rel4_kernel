@@ -86,7 +86,6 @@ pub fn try_init_kernel(
         debug!("ERROR: free memory management initialization failed\n");
         return false;
     }
-
     if let Some((initial_thread, root_cnode_cap)) = root_server_init(
         it_v_reg,
         extra_bi_size_bits,

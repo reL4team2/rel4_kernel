@@ -115,7 +115,6 @@ pub fn root_server_init(
             ipcbuf_cap,
         )
     };
-
     if initial as usize == 0 {
         debug!("ERROR: could not create initial thread");
         return None;
@@ -123,7 +122,7 @@ pub fn root_server_init(
     Some((initial, root_cnode_cap))
 }
 
-#[no_mangle]
+// #[no_mangle]
 unsafe fn create_initial_thread(
     root_cnode_cap: &cap_t,
     it_pd_cap: &cap_t,
@@ -169,11 +168,10 @@ unsafe fn create_initial_thread(
     tcb.tcbPriority = seL4_MaxPrio;
     set_thread_state(tcb, ThreadState::ThreadStateRunning);
     tcb.setup_reply_master();
-    unsafe {
-        ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
-        ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
-    }
+    ksCurDomain = ksDomSchedule[ksDomScheduleIdx].domain;
+    ksDomainTime = ksDomSchedule[ksDomScheduleIdx].length;
     tcb.domain = ksCurDomain;
+    // log::error!("tcb.domain:{:#x}", &tcb.domain as *const usize as usize);
     #[cfg(feature = "ENABLE_SMP")]
     {
         tcb.tcbAffinity = 0;
