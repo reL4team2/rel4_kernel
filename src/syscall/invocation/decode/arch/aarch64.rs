@@ -5,6 +5,7 @@ use crate::syscall::invocation::decode::current_syscall_error;
 use crate::syscall::ThreadState;
 use crate::syscall::{current_lookup_fault, get_syscall_arg, set_thread_state, unlikely};
 use crate::syscall::{ensure_empty_slot, get_currenct_thread, lookup_slot_for_cnode_op};
+use crate::utils::clear_memory_pt;
 use log::debug;
 use sel4_common::arch::maskVMRights;
 use sel4_common::cap_rights::seL4_CapRights_t;
@@ -98,7 +99,7 @@ fn decode_page_table_invocation(
         // log::warn!("Need to check is FinalCapability here");
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
         // unimplemented!("performPageTableInvocationUnmap");
-        // return decode_page_table_unmap(cte);
+        return decode_page_table_unmap(cte);
     }
 
     if unlikely(label != MessageLabel::ARMPageTableMap) {
@@ -698,43 +699,33 @@ fn decode_page_table_unmap(pt_cte: &mut cte_t) -> exception_t {
     return invoke_page_table_unmap(cap);
 }
 
-// FIXED check pgd_is_mapped
-// vtable_root is pgd, not pd,
-// fn get_vspace(lvl1pt_cap: &cap_t) -> Option<(PTE, usize)> {
-//     if lvl1pt_cap.get_cap_type() != CapTag::CapPageGlobalDirectoryCap
-//         || lvl1pt_cap.get_pgd_is_mapped() == asidInvalid
-//     {
-//         debug!("ARMMMUInvocation: Invalid top-level PageTable.");
-//         unsafe {
-//             current_syscall_error._type = seL4_InvalidCapability;
-//             current_syscall_error.invalidCapNumber = 1;
-//         }
-//         return None;
-//     }
+fn decode_upper_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
+    let cap = &mut ctSlot.cap;
+    if cap.get_pud_is_mapped() != 0 {
+        let pud = &mut PUDE(cap.get_pud_base_ptr());
+        // TODO:: llh implement unmap_page_upper_directory as PUDE's method , but below two lines code both will cause sel4test end panic
+        pud.unmap_page_upper_directory(cap.get_pud_mapped_asid(), cap.get_pud_mapped_address());
+        // unmap_page_upper_directory(cap.get_pud_mapped_asid(), cap.get_pud_mapped_address(), pud);
+        clear_memory_pt(pud.self_addr() as *mut u8, cap.get_cap_size_bits());
+    }
+    cap.set_pud_is_mapped(0);
+    exception_t::EXCEPTION_NONE
+}
 
-//     let lvl1pt = lvl1pt_cap.get_pgd_base_ptr();
-//     let asid = lvl1pt_cap.get_pgd_mapped_asid();
-//     let find_ret = find_vspace_for_asid(asid);
-//     if find_ret.status != exception_t::EXCEPTION_NONE {
-//         debug!("ARMMMUInvocation: ASID lookup failed1");
-//         unsafe {
-//             current_lookup_fault = find_ret.lookup_fault.unwrap();
-//             current_syscall_error._type = seL4_FailedLookup;
-//             current_syscall_error.failedLookupWasSource = 0;
-//         }
-//         return None;
-//     }
 
-//     if find_ret.vspace_root.unwrap() as usize != lvl1pt {
-//         debug!("ARMMMUInvocation: ASID lookup failed");
-//         unsafe {
-//             current_syscall_error._type = seL4_InvalidCapability;
-//             current_syscall_error.invalidCapNumber = 1;
-//         }
-//         return None;
-//     }
-//     Some((PTE(lvl1pt), asid))
-// }
+fn decode_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
+    let cap = &mut ctSlot.cap;
+    if cap.get_pd_is_mapped() != 0 {
+        let pd = &mut PDE(cap.get_pud_base_ptr());
+        // clear_memory(ptr, bits);
+        // TODO:: llh implement unmap_page_upper_directory as PUDE's method , but below two lines code both will cause sel4test end panic
+        pd.unmap_page_directory(cap.get_pd_mapped_asid(), cap.get_pd_mapped_address());
+        // unmap_page_directory(cap.get_pd_mapped_asid(), cap.get_pd_mapped_address(), pd);
+        clear_memory_pt(pd.self_addr() as *mut u8, cap.get_cap_size_bits());
+    }
+    cap.set_pud_is_mapped(0);
+    exception_t::EXCEPTION_NONE
+}
 
 fn decode_vspace_root_invocation(
     label: MessageLabel,
@@ -879,7 +870,7 @@ fn decode_page_upper_directory_invocation(
         }
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
         // unimplemented!("performUpperPageDirectoryInvocationUnmap");
-        // return decode_upper_page_directory_unmap(cte);
+        return decode_upper_page_directory_unmap(cte);
     }
 
     // Return SYSCALL_ERROR if message is not ARMPageUpperDirectoryUnmap
@@ -976,7 +967,7 @@ fn decode_page_directory_invocation(
         }
         get_currenct_thread().set_state(ThreadState::ThreadStateRestart);
         // unimplemented!("performPageDirectoryInvocationUnmap");
-        // return decode_page_directory_unmap(cte);
+        return decode_page_directory_unmap(cte);
     }
 
     // Return SYSCALL_ERROR if message is not ARMPageDirectoryUnmap
