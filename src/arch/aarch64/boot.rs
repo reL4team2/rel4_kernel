@@ -2,7 +2,7 @@ use log::debug;
 use sel4_common::arch::config::KERNEL_ELF_BASE;
 use sel4_common::{sel4_config::PAGE_BITS, BIT};
 use sel4_task::create_idle_thread;
-use sel4_vspace::kpptr_to_paddr;
+use sel4_vspace::{kpptr_to_paddr, rust_map_kernel_window};
 
 use crate::arch::aarch64::platform::{cleanInvalidateL1Caches, invalidateLocalTLB};
 
@@ -48,7 +48,8 @@ pub fn try_init_kernel(
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
 
     // Map kernel window area
-    sel4_common::ffi_call!(map_kernel_window);
+    // sel4_common::ffi_call!(map_kernel_window);
+    rust_map_kernel_window();
 
     // Initialize cpu
     let inited = sel4_common::ffi_call!(init_cpu -> bool);
