@@ -1,3 +1,11 @@
+#[cfg(target_arch="aarch64")]
+use sel4_common::{
+    sel4_config::{ID_AA64PFR0_EL1_ASIMD, ID_AA64PFR0_EL1_FP},
+    MASK,
+};
+#[cfg(target_arch="aarch64")]
+use sel4_vspace::{dsb, isb};
+
 use crate::BIT;
 
 #[cfg(target_arch = "riscv64")]
@@ -51,4 +59,34 @@ pub fn clear_memory_pt(ptr: *mut u8, bits: usize) {
             pptr_to_paddr(ptr as usize),
         );
     }
+}
+
+#[inline]
+#[cfg(target_arch="aarch64")]
+pub fn setVTable(addr: usize) {
+    dsb();
+    unsafe {
+        core::arch::asm!("MSR vbar_el1, {0}", in(reg) addr);
+    }
+    isb();
+}
+
+#[inline]
+#[cfg(target_arch="aarch64")]
+pub fn fpsimd_HWCapTest() -> bool {
+    let mut id_aa64pfr0: usize;
+
+    // 读取系统寄存器
+    unsafe {
+        core::arch::asm!("mrs {}, id_aa64pfr0_el1", out(reg) id_aa64pfr0);
+    }
+
+    // 检查硬件是否支持FP和ASIMD
+    if ((id_aa64pfr0 >> ID_AA64PFR0_EL1_FP) & MASK!(4)) == MASK!(4)
+        || ((id_aa64pfr0 >> ID_AA64PFR0_EL1_ASIMD) & MASK!(4)) == MASK!(4)
+    {
+        return false;
+    }
+
+    true
 }

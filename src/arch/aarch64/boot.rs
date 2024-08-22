@@ -4,7 +4,7 @@ use sel4_common::{sel4_config::PAGE_BITS, BIT};
 use sel4_task::create_idle_thread;
 use sel4_vspace::{kpptr_to_paddr, rust_map_kernel_window};
 
-use crate::arch::aarch64::platform::{cleanInvalidateL1Caches, invalidateLocalTLB};
+use crate::arch::aarch64::platform::{cleanInvalidateL1Caches, init_cpu, invalidateLocalTLB};
 
 use crate::{
     arch::init_freemem,
@@ -15,6 +15,8 @@ use crate::{
     config::{BI_FRAME_SIZE_BITS, USER_TOP},
     structures::{p_region_t, seL4_SlotRegion, v_region_t},
 };
+
+use super::platform::initIRQController;
 
 pub fn try_init_kernel(
     ui_p_reg_start: usize,
@@ -48,18 +50,17 @@ pub fn try_init_kernel(
     let extra_bi_frame_vptr = bi_frame_vptr + BIT!(BI_FRAME_SIZE_BITS);
 
     // Map kernel window area
-    // sel4_common::ffi_call!(map_kernel_window);
     rust_map_kernel_window();
 
     // Initialize cpu
-    let inited = sel4_common::ffi_call!(init_cpu -> bool);
-
+    let inited = init_cpu();
     // Initialize the drivers used by the kernel.
     driver_collect::init();
     log::debug!("init_cpu: {}", inited);
 
     // Initialize platform
-    sel4_common::ffi_call!(init_plat);
+    // sel4_common::ffi_call!(init_plat);
+    init_plat();
 
     let dtb_p_reg = init_dtb(dtb_size, dtb_phys_addr, &mut extra_bi_size);
     if dtb_p_reg.is_none() {
@@ -129,4 +130,8 @@ pub fn try_init_kernel(
     }
 
     true
+}
+
+fn init_plat() {
+    initIRQController()
 }

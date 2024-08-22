@@ -98,7 +98,6 @@ pub fn c_handle_syscall(_cptr: usize, _msgInfo: usize, syscall: usize) {
         clh_lock_acquire(cpu_id(), false);
     }
     entry_hook();
-    // ffi_call!(c_entry_hook);
     // if hart_id() == 0 {
     //     debug!("c_handle_syscall: syscall: {},", syscall as isize);
     // }

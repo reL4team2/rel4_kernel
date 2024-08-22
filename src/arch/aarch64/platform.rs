@@ -1,11 +1,10 @@
-use aarch64_cpu::registers::Writeable;
-use aarch64_cpu::registers::{TPIDR_EL1, VBAR_EL1};
+use aarch64_cpu::registers::TPIDR_EL1;
+use aarch64_cpu::registers::{Writeable, CNTKCTL_EL1};
 use core::arch::asm;
 use sel4_common::arch::config::{KERNEL_ELF_BASE, PADDR_TOP};
 use sel4_common::ffi::kernel_stack_alloc;
 use sel4_common::ffi_addr;
 use sel4_common::sel4_config::{wordBits, CONFIG_KERNEL_STACK_BITS};
-use sel4_common::utils::cpu_id;
 
 use super::ffi::*;
 use crate::boot::{
@@ -14,36 +13,40 @@ use crate::boot::{
 };
 use crate::config::*;
 use crate::structures::*;
+use crate::utils::{fpsimd_HWCapTest, setVTable};
 use log::debug;
 use sel4_vspace::*;
 
-use super::arm_gic::gic_v2::gic_v2::cpu_initLocalIRQController;
+use super::arm_gic::gic_v2::gic_v2::{cpu_initLocalIRQController, dist_init};
 
 #[allow(unused)]
 pub fn init_cpu() -> bool {
-    // use arch::aarch64::arm_gic::gic_v2;
+    activate_kernel_vspace();
 
-    // Setup kernel stack pointer.
-
-    // Wrapping_add, first argument is CURRENT_CPU_INDEX
-    //
-    let mut stack_top =
-        unsafe { &kernel_stack_alloc.data[0][0 + (1 << CONFIG_KERNEL_STACK_BITS)] as *const u8 }
-            as u64;
-    stack_top |= cpu_id() as u64; //the judge of enable smp have done in cpu_id
-
-    TPIDR_EL1.set(stack_top);
     // CPU's exception vector table
     unsafe {
-        asm!("dsb sy;"); // DSB SY
-        VBAR_EL1.set(arm_vector_table as u64);
-        asm!("isb;"); // ISB SY
+        setVTable(ffi_addr!(arm_vector_table));
     }
+
+    // Setup kernel stack pointer.
+    let mut stack_top = unsafe {
+        kernel_stack_alloc.data.as_ptr().add(0) as usize
+            + sel4_common::BIT!(CONFIG_KERNEL_STACK_BITS)
+    } as u64;
+
+    // CPU's exception vector table
+    unsafe {
+        setVTable(ffi_addr!(arm_vector_table));
+    }
+    TPIDR_EL1.set(stack_top);
+
+    let haveHWFPU = fpsimd_HWCapTest();
+
     // initLocalIRQController
     cpu_initLocalIRQController();
+
     // armv_init_user_access
-    // user_access::armv_init_user_access();
-    //initTimer
+    armv_init_user_access();
 
     unsafe {
         initTimer();
@@ -183,4 +186,12 @@ fn readCacheSize(level: usize) -> usize {
         );
     }
     size
+}
+
+fn armv_init_user_access() {
+    CNTKCTL_EL1.set(0);
+}
+
+pub fn initIRQController() {
+    dist_init();
 }
