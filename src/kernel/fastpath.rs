@@ -1,7 +1,6 @@
 use crate::MASK;
 use crate::{
     config::seL4_MsgLengthBits,
-    ffi::fastpath_restore,
     syscall::{slowpath, SysCall, SysReplyRecv},
 };
 use core::intrinsics::{likely, unlikely};
@@ -131,6 +130,64 @@ pub fn fastpath_copy_mrs(length: usize, src: &mut tcb_t, dest: &mut tcb_t) {
 //         __restore_fp(badge, msgInfo, cur_thread_regs);
 //     }
 // }
+#[inline]
+#[no_mangle]
+#[cfg(target_arch = "aarch64")]
+pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) {
+	use core::arch::asm;
+    unsafe {
+        (*cur_thread).tcbArch.load_thread_local();
+        asm!(
+            "mov     sp, {}                     \n",
+            /* Restore thread's SPSR, LR, and SP */
+            "ldp     x21, x22, [sp, #31 * 8]  \n",
+            "ldr     x23, [sp, #33 * 8]     \n",
+            "msr     sp_el0, x21                \n",
+            // #ifdef CONFIG_ARM_HYPERVISOR_SUPPORT
+            // 		"msr     elr_el2, x22               \n"
+            // 		"msr     spsr_el2, x23              \n"
+            // #else
+            "msr     elr_el1, x22               \n",
+            "msr     spsr_el1, x23              \n",
+            // #endif
+
+            /* Restore remaining registers */
+            "ldp     x2,  x3,  [sp, #16 * 1]    \n",
+            "ldp     x4,  x5,  [sp, #16 * 2]    \n",
+            "ldp     x6,  x7,  [sp, #16 * 3]    \n",
+            "ldp     x8,  x9,  [sp, #16 * 4]    \n",
+            "ldp     x10, x11, [sp, #16 * 5]    \n",
+            "ldp     x12, x13, [sp, #16 * 6]    \n",
+            "ldp     x14, x15, [sp, #16 * 7]    \n",
+            "ldp     x16, x17, [sp, #16 * 8]    \n",
+            "ldp     x18, x19, [sp, #16 * 9]    \n",
+            "ldp     x20, x21, [sp, #16 * 10]   \n",
+            "ldp     x22, x23, [sp, #16 * 11]   \n",
+            "ldp     x24, x25, [sp, #16 * 12]   \n",
+            "ldp     x26, x27, [sp, #16 * 13]   \n",
+            "ldp     x28, x29, [sp, #16 * 14]   \n",
+            "ldr     x30, [sp, #30 * 8]           \n",
+            "eret                                 ",
+            in(reg) (*cur_thread).tcbArch.raw_ptr()
+        );
+    }
+    panic!("unreachable")
+}
+
+#[inline]
+#[no_mangle]
+#[cfg(target_arch = "riscv64")]
+pub fn fastpath_restore(_badge: usize, _msgInfo: usize, cur_thread: *mut tcb_t) {
+    #[cfg(feature = "ENABLE_SMP")]
+    {}
+	extern "C" {
+		pub fn __fastpath_restore(badge: usize, msgInfo: usize, cur_thread_reg: usize);
+	}
+	unsafe {
+		__fastpath_restore(_badge,_msgInfo,(*cur_thread).tcbArch.raw_ptr());
+	}
+	panic!("unreachable")
+}
 
 #[inline]
 #[no_mangle]
@@ -205,9 +262,7 @@ pub fn fastpath_call(cptr: usize, msgInfo: usize) {
     info.set_caps_unwrapped(0);
     let msgInfo1 = info.to_word();
     let badge = ep_cap.get_ep_badge();
-    unsafe {
-        fastpath_restore(badge, msgInfo1, get_currenct_thread());
-    }
+	fastpath_restore(badge, msgInfo1, get_currenct_thread());
 }
 
 #[inline]
@@ -288,7 +343,7 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         EPState_Recv,
     );
 
-    unsafe {
+    // unsafe {
         let node = convert_to_mut_type_ref::<cte_t>(caller_slot.cteMDBNode.get_prev());
         mdb_node_ptr_mset_mdbNext_mdbRevocable_mdbFirstBadged(&mut node.cteMDBNode, 0, 1, 1);
         caller_slot.cap = cap_t::new_null_cap();
@@ -302,5 +357,5 @@ pub fn fastpath_reply_recv(cptr: usize, msgInfo: usize) {
         info.set_caps_unwrapped(0);
         let msg_info1 = info.to_word();
         fastpath_restore(0, msg_info1, get_currenct_thread() as *mut tcb_t);
-    }
+    // }
 }

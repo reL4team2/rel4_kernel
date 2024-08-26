@@ -1,6 +1,6 @@
 pub mod handler;
 
-#[cfg(target_arch="riscv64")]
+#[cfg(target_arch = "riscv64")]
 use crate::BIT;
 #[cfg(target_arch = "riscv64")]
 use core::arch::asm;

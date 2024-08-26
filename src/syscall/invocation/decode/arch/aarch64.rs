@@ -712,7 +712,6 @@ fn decode_upper_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
     exception_t::EXCEPTION_NONE
 }
 
-
 fn decode_page_directory_unmap(ctSlot: &mut cte_t) -> exception_t {
     let cap = &mut ctSlot.cap;
     if cap.get_pd_is_mapped() != 0 {
