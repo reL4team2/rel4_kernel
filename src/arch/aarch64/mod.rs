@@ -12,6 +12,7 @@ pub mod arm_gic;
 use aarch64_cpu::registers::{Writeable, CNTV_CTL_EL0, CNTV_TVAL_EL0};
 pub use boot::try_init_kernel;
 pub use c_traps::restore_user_context;
+pub use exception::handleUnknownSyscall;
 pub(crate) use pg::set_vm_root_for_flush;
 pub use platform::init_freemem;
 
