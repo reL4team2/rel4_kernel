@@ -6,7 +6,7 @@ mod utils;
 
 use core::mem::size_of;
 
-use crate::ffi::tcbDebugAppend;
+// use crate::ffi::tcbDebugAppend;
 use crate::{BIT, ROUND_UP};
 use log::debug;
 use sel4_common::arch::config::PADDR_TOP;
@@ -142,26 +142,26 @@ pub fn bi_finalise(dtb_size: usize, dtb_phys_addr: usize, extra_bi_size: usize) 
 }
 
 pub fn init_core_state(scheduler_action: *mut tcb_t) {
-    unsafe {
-        #[cfg(feature = "ENABLE_SMP")]
-        if scheduler_action as usize != 0 && scheduler_action as usize != 1 {
-            tcbDebugAppend(scheduler_action);
-        }
-        let idle_thread = {
-            #[cfg(not(feature = "ENABLE_SMP"))]
-            {
-                ksIdleThread as *mut tcb_t
-            }
-            #[cfg(feature = "ENABLE_SMP")]
-            {
-                ksSMP[cpu_id()].ksIdleThread as *mut tcb_t
-            }
-        };
+    // unsafe {
+    // #[cfg(feature = "ENABLE_SMP")]
+    // if scheduler_action as usize != 0 && scheduler_action as usize != 1 {
+    //     tcbDebugAppend(scheduler_action);
+    // }
+    // let idle_thread = {
+    //     #[cfg(not(feature = "ENABLE_SMP"))]
+    //     {
+    //         ksIdleThread as *mut tcb_t
+    //     }
+    //     #[cfg(feature = "ENABLE_SMP")]
+    //     {
+    //         ksSMP[cpu_id()].ksIdleThread as *mut tcb_t
+    //     }
+    // };
+    // tcbDebugAppend(idle_thread);
+    // }
 
-        tcbDebugAppend(idle_thread);
-        set_current_scheduler_action(scheduler_action as usize);
-        set_current_thread(get_idle_thread());
-    }
+    set_current_scheduler_action(scheduler_action as usize);
+    set_current_thread(get_idle_thread());
 }
 
 #[cfg(feature = "ENABLE_SMP")]

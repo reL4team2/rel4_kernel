@@ -1,5 +1,5 @@
 use crate::config::CONFIG_MAX_NUM_WORK_UNITS_PER_PREEMPTION;
-use crate::ffi::tcbDebugRemove;
+// use crate::ffi::tcbDebugRemove;
 use crate::interrupt::{deletingIRQHandler, isIRQPending, setIRQState, IRQState};
 use crate::kernel::boot::current_lookup_fault;
 use crate::syscall::safe_unbind_notification;
@@ -199,9 +199,10 @@ pub fn finaliseCap(cap: &cap_t, _final: bool, _exposed: bool) -> finaliseCap_ret
                 safe_unbind_notification(tcb);
                 tcb.cancel_ipc();
                 tcb.suspend();
-                unsafe {
-                    tcbDebugRemove(tcb as *mut tcb_t);
-                }
+                // #[cfg(feature="DEBUG_BUILD")]
+                // unsafe {
+                //     tcbDebugRemove(tcb as *mut tcb_t);
+                // }
                 fc_ret.remainder =
                     Zombie_new(tcbCNodeEntries, ZombieType_ZombieTCB, cte_ptr.get_ptr());
                 fc_ret.cleanupInfo = cap_t::new_null_cap();

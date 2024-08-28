@@ -1,4 +1,4 @@
-use crate::ffi::tcbDebugAppend;
+// use crate::ffi::tcbDebugAppend;
 use crate::syscall::{
     FREE_INDEX_TO_OFFSET, GET_FREE_INDEX, GET_OFFSET_FREE_PTR, OFFSET_TO_FREE_IDNEX,
 };
@@ -48,9 +48,10 @@ fn create_object(
             tcb.init();
             tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
             tcb.domain = get_current_domain();
-            unsafe {
-                tcbDebugAppend(tcb as *mut tcb_t);
-            }
+            // #[cfg(feature="DEBUG_BUILD")]
+            // unsafe {
+            //     tcbDebugAppend(tcb as *mut tcb_t);
+            // }
             return cap_t::new_thread_cap(tcb.get_ptr());
         }
 
@@ -89,9 +90,10 @@ fn create_object(
             tcb.init();
             tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
             tcb.domain = get_current_domain();
-            unsafe {
-                tcbDebugAppend(tcb as *mut tcb_t);
-            }
+            // #[cfg(feature="DEBUG_BUILD")]
+            // unsafe {
+            //     tcbDebugAppend(tcb as *mut tcb_t);
+            // }
             return cap_t::new_thread_cap(tcb.get_ptr());
         }
 

@@ -1,9 +1,9 @@
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 use sel4_common::{
     sel4_config::{ID_AA64PFR0_EL1_ASIMD, ID_AA64PFR0_EL1_FP},
     MASK,
 };
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 use sel4_vspace::{dsb, isb};
 
 use crate::BIT;
@@ -62,7 +62,7 @@ pub fn clear_memory_pt(ptr: *mut u8, bits: usize) {
 }
 
 #[inline]
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 pub fn setVTable(addr: usize) {
     dsb();
     unsafe {
@@ -72,7 +72,7 @@ pub fn setVTable(addr: usize) {
 }
 
 #[inline]
-#[cfg(target_arch="aarch64")]
+#[cfg(target_arch = "aarch64")]
 pub fn fpsimd_HWCapTest() -> bool {
     let mut id_aa64pfr0: usize;
 
