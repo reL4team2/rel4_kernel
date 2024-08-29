@@ -18,7 +18,7 @@ use crate::{
 pub fn decode_domain_invocation(
     invLabel: MessageLabel,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if invLabel != MessageLabel::DomainSetSet {
         unsafe {

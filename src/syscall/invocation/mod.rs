@@ -59,7 +59,7 @@ pub fn handleInvocation(isCall: bool, isBlocking: bool) -> exception_t {
         cptr,
         isBlocking,
         isCall,
-        buffer,
+        buffer.unwrap(),
     );
     if status == exception_t::EXCEPTION_PREEMTED {
         return status;

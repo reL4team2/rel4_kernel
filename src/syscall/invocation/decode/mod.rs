@@ -38,7 +38,7 @@ pub fn decode_invocation(
     cap_index: usize,
     block: bool,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match cap.get_cap_type() {
         CapTag::CapNullCap | CapTag::CapZombieCap => {

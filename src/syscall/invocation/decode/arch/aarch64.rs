@@ -52,7 +52,7 @@ pub fn decode_mmu_invocation(
     length: usize,
     slot: &mut cte_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match slot.cap.get_cap_type() {
         CapTag::CapPageGlobalDirectoryCap => {
@@ -78,7 +78,7 @@ fn decode_page_table_invocation(
     label: MessageLabel,
     length: usize,
     cte: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     /*
         if (invLabel == ARMPageTableUnmap) {
@@ -182,7 +182,7 @@ fn decode_page_clean_invocation(
     length: usize,
     cte: &mut cte_t,
     _call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 2 {
         log::error!("[User] Page Flush: Truncated message.");
@@ -268,7 +268,7 @@ fn decode_frame_invocation(
     length: usize,
     frame_slot: &mut cte_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match label {
         MessageLabel::ARMPageMap => decode_frame_map(length, frame_slot, buffer),
@@ -299,7 +299,7 @@ fn decode_frame_invocation(
 fn decode_asid_control(
     label: MessageLabel,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if unlikely(label != MessageLabel::ARMASIDControlMakePool) {
         global_ops!(current_syscall_error._type = seL4_IllegalOperation);
@@ -439,7 +439,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
 fn decode_frame_map(
     length: usize,
     frame_slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 3 || get_extra_cap_by_index(0).is_none() {
         debug!("ARMPageMap: Truncated message.");
@@ -730,7 +730,7 @@ fn decode_vspace_root_invocation(
     label: MessageLabel,
     length: usize,
     cte: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match label {
         MessageLabel::ARMVSpaceClean_Data
@@ -842,7 +842,7 @@ fn decode_page_upper_directory_invocation(
     label: MessageLabel,
     length: usize,
     cte: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     /*
         lookupPGDSlot_ret_t pgdSlot;
@@ -940,7 +940,7 @@ fn decode_page_directory_invocation(
     label: MessageLabel,
     length: usize,
     cte: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     /*
         if (invLabel == ARMPageDirectoryUnmap) {
@@ -1059,7 +1059,7 @@ pub fn arch_decode_irq_control_invocation(
     label: MessageLabel,
     length: usize,
     src_slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if label == MessageLabel::ARMIRQIssueIRQHandlerTrigger {
         if length < 4 || get_extra_cap_by_index(0).is_none() {

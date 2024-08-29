@@ -58,7 +58,7 @@ extern "C" fn decodeARMMMUInvocation(
     cte: &mut cte_t,
     _cap: cap_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     decode_mmu_invocation(invLabel, length, cte, call, buffer)
 }

@@ -20,7 +20,7 @@ pub fn decode_cnode_invocation(
     invLabel: MessageLabel,
     length: usize,
     cap: &cap_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if invLabel < MessageLabel::CNodeRevoke || invLabel > MessageLabel::CNodeSaveCaller {
         debug!("CNodeCap: Illegal Operation attempted.");
@@ -66,7 +66,7 @@ fn decode_cnode_invoke_with_two_slot(
     label: MessageLabel,
     dest_slot: &mut cte_t,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 4 || get_extra_cap_by_index(0).is_none() {
         debug!("CNode Copy/Mint/Move/Mutate: Truncated message.");
@@ -152,7 +152,7 @@ fn decode_cnode_invoke_with_two_slot(
 fn decode_cnode_rotate(
     dest_slot: &mut cte_t,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 8 || get_extra_cap_by_index(0).is_none() || get_extra_cap_by_index(1).is_none() {
         debug!("CNode Rotate: Target cap invalid.");

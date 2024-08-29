@@ -77,10 +77,10 @@ pub fn lookup_extra_caps_with_buf(thread: &mut tcb_t, buf: Option<&seL4_IPCBuffe
 
 // TODO: Remove this option because it not need to check whether is None or Some
 #[inline]
-pub fn get_syscall_arg(i: usize, ipc_buffer: Option<&seL4_IPCBuffer>) -> usize {
+pub fn get_syscall_arg(i: usize, ipc_buffer: &seL4_IPCBuffer) -> usize {
     match i < msgRegisterNum {
         true => get_currenct_thread().tcbArch.get_register(ArchReg::Msg(i)),
-        false => ipc_buffer.unwrap().msg[i],
+        false => ipc_buffer.msg[i],
     }
 }
 

@@ -20,7 +20,7 @@ pub fn decode_irq_control_invocation(
     label: MessageLabel,
     length: usize,
     src_slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if label == MessageLabel::IRQIssueIRQHandler {
         if length < 3 || get_extra_cap_by_index(0).is_none() {

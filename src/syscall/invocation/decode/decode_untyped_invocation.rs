@@ -25,7 +25,7 @@ pub fn decode_untyed_invocation(
     length: usize,
     slot: &mut cte_t,
     cap: &cap_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if inv_label != MessageLabel::UntypedRetype {
         debug!("Untyped cap: Illegal operation attempted.");

@@ -44,7 +44,7 @@ pub fn decode_tcb_invocation(
     cap: &cap_t,
     slot: &mut cte_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     unsafe {
         remoteTCBStall(convert_to_mut_type_ref::<tcb_t>(cap.get_tcb_ptr()));
@@ -87,7 +87,7 @@ pub fn decode_tcb_invocation(
     cap: &cap_t,
     slot: &mut cte_t,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     match invLabel {
         MessageLabel::TCBReadRegisters => decode_read_registers(cap, length, call, buffer),
@@ -122,7 +122,7 @@ fn decode_read_registers(
     cap: &cap_t,
     length: usize,
     call: bool,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 2 {
         debug!("TCB CopyRegisters: Truncated message.");
@@ -160,7 +160,7 @@ fn decode_read_registers(
 fn decode_write_registers(
     cap: &cap_t,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 2 {
         unsafe {
@@ -199,7 +199,7 @@ fn decode_write_registers(
 fn decode_copy_registers(
     cap: &cap_t,
     _length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     let flags = get_syscall_arg(0, buffer);
 
@@ -229,7 +229,7 @@ fn decode_tcb_configure(
     target_thread_cap: &cap_t,
     msg_length: usize,
     target_thread_slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if msg_length < 4
         || get_extra_cap_by_index(0).is_none()
@@ -339,7 +339,7 @@ fn decode_tcb_configure(
     )
 }
 
-fn decode_set_priority(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffer>) -> exception_t {
+fn decode_set_priority(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 1 || get_extra_cap_by_index(0).is_none() {
         debug!("TCB SetPriority: Truncated message.");
         unsafe {
@@ -372,7 +372,7 @@ fn decode_set_priority(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffe
 fn decode_set_mc_priority(
     cap: &cap_t,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 1 || get_extra_cap_by_index(0).is_none() {
         debug!("TCB SetMCPPriority: Truncated message.");
@@ -408,7 +408,7 @@ fn decode_set_mc_priority(
 fn decode_set_sched_params(
     cap: &cap_t,
     length: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 2 || get_extra_cap_by_index(0).is_some() {
         debug!("TCB SetSchedParams: Truncated message.");
@@ -457,7 +457,7 @@ fn decode_set_ipc_buffer(
     cap: &cap_t,
     length: usize,
     slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 1 || get_extra_cap_by_index(0).is_none() {
         debug!("TCB SetIPCBuffer: Truncated message.");
@@ -501,7 +501,7 @@ fn decode_set_space(
     cap: &cap_t,
     length: usize,
     slot: &mut cte_t,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if length < 3 || get_extra_cap_by_index(0).is_none() || get_extra_cap_by_index(1).is_none() {
         debug!("TCB SetSpace: Truncated message.");
@@ -634,7 +634,7 @@ fn decode_unbind_notification(cap: &cap_t) -> exception_t {
 }
 
 #[cfg(feature = "ENABLE_SMP")]
-fn decode_set_affinity(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffer>) -> exception_t {
+fn decode_set_affinity(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     use sel4_common::sel4_config::CONFIG_MAX_NUM_NODES;
 
     if length < 1 {
@@ -658,7 +658,7 @@ fn decode_set_affinity(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffe
     invoke_tcb_set_affinity(tcb, affinity)
 }
 
-fn decode_set_tls_base(cap: &cap_t, length: usize, buffer: Option<&seL4_IPCBuffer>) -> exception_t {
+fn decode_set_tls_base(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 1 {
         debug!("TCB SetTLSBase: Truncated message.");
         unsafe {

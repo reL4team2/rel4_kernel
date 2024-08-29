@@ -72,7 +72,7 @@ pub fn invoke_tcb_write_registers(
     resumeTarget: usize,
     mut n: usize,
     _arch: usize,
-    buffer: Option<&seL4_IPCBuffer>,
+    buffer: &seL4_IPCBuffer,
 ) -> exception_t {
     if n > frameRegNum + gpRegNum {
         n = frameRegNum + gpRegNum;
