@@ -11,7 +11,10 @@ use sel4_common::utils::{convert_to_mut_type_ref, cpu_id};
 use sel4_cspace::interface::cte_t;
 use sel4_vspace::pptr_t;
 
-use crate::{arch::read_sip, config::*};
+use crate::config::*;
+
+#[cfg(target_arch = "riscv64")]
+use crate::arch::read_sip;
 
 #[cfg(feature = "ENABLE_SMP")]
 use crate::ffi::{ipi_clear_irq, ipi_get_irq};

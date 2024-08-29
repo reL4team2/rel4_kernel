@@ -1,12 +1,12 @@
 use crate::arch::resetTimer;
-use crate::config::{irqInvalid, maxIRQ};
+use crate::config::{irqInvalid,maxIRQ};
 use crate::interrupt::*;
 use core::intrinsics::unlikely;
 use log::debug;
 use sel4_common::structures::exception_t;
 use sel4_cspace::interface::CapTag;
 use sel4_ipc::notification_t;
-use sel4_task::{activateThread, schedule, timerTick};
+use sel4_task::{activateThread, schedule,timerTick};
 
 #[no_mangle]
 pub fn handleInterruptEntry() -> exception_t {
@@ -14,9 +14,6 @@ pub fn handleInterruptEntry() -> exception_t {
 
     if irq != irqInvalid {
         handleInterrupt(irq);
-    } else {
-        debug!("Spurious interrupt!");
-        debug!("Superior IRQ!! SIP {:#x}\n", read_sip());
     }
 
     schedule();

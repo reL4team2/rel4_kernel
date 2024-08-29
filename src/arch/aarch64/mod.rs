@@ -16,15 +16,6 @@ pub use exception::handleUnknownSyscall;
 pub(crate) use pg::set_vm_root_for_flush;
 pub use platform::init_freemem;
 
-pub fn read_sip() -> usize {
-    // let temp: usize;
-    // unsafe {
-    //     asm!("csrr {}, sip",out(reg)temp);
-    // }
-    // temp
-    todo!("read_sip")
-}
-
 /// Reset the current Timer
 #[no_mangle]
 pub fn resetTimer() {

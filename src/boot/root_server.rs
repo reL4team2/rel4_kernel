@@ -186,7 +186,6 @@ unsafe fn create_initial_thread(
     tcb as *mut tcb_t
 }
 
-// TODO: FIX asid_init for aarch64
 fn asid_init(root_cnode_cap: cap_t, it_pd_cap: cap_t) -> bool {
     let it_ap_cap = create_it_asid_pool(&root_cnode_cap);
     if it_ap_cap.get_cap_type() == CapTag::CapNullCap {
@@ -393,7 +392,6 @@ fn create_domain_cap(root_cnode_cap: &cap_t) {
     }
 }
 
-// TODO: FIX this for aarch64
 fn init_irqs(root_cnode_cap: &cap_t) {
     for i in 0..maxIRQ + 1 {
         if i != irqInvalid {

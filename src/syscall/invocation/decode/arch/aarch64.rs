@@ -830,12 +830,7 @@ fn decode_vspace_flush_invocation(
 ) -> exception_t {
     if start < end {
         let root_switched = set_vm_root_for_flush(vspace, asid);
-        // log::warn!(
-        //     "need to flush cache for decode_page_clean_invocation label: {:?}",
-        //     label
-        // );
         doFlush(label, start, end, pstart);
-        // todo!();
         if root_switched {
             let _ = get_currenct_thread().set_vm_root();
         }

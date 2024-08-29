@@ -14,7 +14,9 @@ use sel4_task::{get_currenct_thread, ksWorkUnitsCompleted, tcb_t};
 use sel4_vspace::find_vspace_for_asid;
 use sel4_vspace::{asid_pool_t, asid_t, delete_asid, delete_asid_pool, unmapPage, PTE};
 #[cfg(target_arch = "aarch64")]
-use sel4_vspace::{unmap_page_directory, unmap_page_table, unmap_page_upper_directory, PDE, PUDE};
+use sel4_vspace::{
+    unmap_page_directory, unmap_page_table, unmap_page_upper_directory, PDE, PGDE, PUDE,
+};
 
 #[cfg(target_arch = "riscv64")]
 #[no_mangle]
@@ -257,9 +259,10 @@ pub fn preemptionPoint() -> exception_t {
     }
 }
 
+
 #[no_mangle]
+#[cfg(target_arch = "riscv64")]
 pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
-    // TODO: use PGDE to realize the deleteASID in aarch64
     unsafe {
         if let Err(lookup_fault) = delete_asid(
             asid,
@@ -270,6 +273,21 @@ pub fn deleteASID(asid: asid_t, vspace: *mut PTE) {
         }
     }
 }
+
+#[no_mangle]
+#[cfg(target_arch = "aarch64")]
+pub fn deleteASID(asid: asid_t, vspace: *mut PGDE) {
+    unsafe {
+        if let Err(lookup_fault) = delete_asid(
+            asid,
+            vspace,
+            &get_currenct_thread().get_cspace(tcbVTable).cap,
+        ) {
+            current_lookup_fault = lookup_fault;
+        }
+    }
+}
+
 
 #[no_mangle]
 pub fn deleteASIDPool(asid_base: asid_t, pool: *mut asid_pool_t) {

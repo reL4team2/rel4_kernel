@@ -6,7 +6,7 @@ else ifeq ($(ARCH), aarch64)
 TARGET := aarch64-unknown-none-softfloat
 endif
 
-all: build
+all: build 
 	@echo $(ARCH)
 env:
 	rustup install nightly-2023-05-01
