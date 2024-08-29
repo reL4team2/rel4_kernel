@@ -1,8 +1,9 @@
 // use crate::ffi::tcbDebugAppend;
+use super::arch::arch_create_object;
 use crate::syscall::{
     FREE_INDEX_TO_OFFSET, GET_FREE_INDEX, GET_OFFSET_FREE_PTR, OFFSET_TO_FREE_IDNEX,
 };
-use sel4_common::arch::{vm_rights_t, ObjectType};
+use sel4_common::arch::ObjectType;
 use sel4_common::{
     sel4_config::*, structures::exception_t, utils::convert_to_mut_type_ref, BIT, ROUND_DOWN,
 };
@@ -35,7 +36,35 @@ fn create_new_objects(
     }
 }
 
-#[cfg(target_arch = "riscv64")]
+// #[cfg(target_arch = "riscv64")]
+// fn create_object(
+//     obj_type: ObjectType,
+//     region_base: pptr_t,
+//     user_size: usize,
+//     device_mem: usize,
+// ) -> cap_t {
+//     match obj_type {
+//         ObjectType::TCBObject => {
+//             let tcb = convert_to_mut_type_ref::<tcb_t>(region_base + TCB_OFFSET);
+//             tcb.init();
+//             tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
+//             tcb.domain = get_current_domain();
+//             // #[cfg(feature="DEBUG_BUILD")]
+//             // unsafe {
+//             //     tcbDebugAppend(tcb as *mut tcb_t);
+//             // }
+//             return cap_t::new_thread_cap(tcb.get_ptr());
+//         }
+
+//         ObjectType::EndpointObject => cap_t::new_endpoint_cap(0, 1, 1, 1, 1, region_base),
+
+//         ObjectType::NotificationObject => cap_t::new_notification_cap(0, 1, 1, region_base),
+
+//         ObjectType::CapTableObject => cap_t::new_cnode_cap(user_size, 0, 0, region_base),
+
+//         ObjectType::UnytpedObject => cap_t::new_untyped_cap(0, device_mem, user_size, region_base),
+//     }
+// }
 fn create_object(
     obj_type: ObjectType,
     region_base: pptr_t,
@@ -54,128 +83,12 @@ fn create_object(
             // }
             return cap_t::new_thread_cap(tcb.get_ptr());
         }
-
-        ObjectType::EndpointObject => cap_t::new_endpoint_cap(0, 1, 1, 1, 1, region_base),
-
-        ObjectType::NotificationObject => cap_t::new_notification_cap(0, 1, 1, region_base),
-
-        ObjectType::CapTableObject => cap_t::new_cnode_cap(user_size, 0, 0, region_base),
-
-        ObjectType::UnytpedObject => cap_t::new_untyped_cap(0, device_mem, user_size, region_base),
-
-        ObjectType::PageTableObject => cap_t::new_page_table_cap(asidInvalid, region_base, 0, 0),
-
-        ObjectType::NormalPageObject | ObjectType::GigaPageObject | ObjectType::MegaPageObject => {
-            cap_t::new_frame_cap(
-                asidInvalid,
-                region_base,
-                obj_type.get_frame_type(),
-                vm_rights_t::VMReadWrite as usize,
-                device_mem as usize,
-                0,
-            )
-        }
-    }
-}
-#[cfg(target_arch = "aarch64")]
-fn create_object(
-    obj_type: ObjectType,
-    region_base: pptr_t,
-    user_size: usize,
-    device_mem: usize,
-) -> cap_t {
-    match obj_type {
-        ObjectType::TCBObject => {
-            let tcb = convert_to_mut_type_ref::<tcb_t>(region_base + TCB_OFFSET);
-            tcb.init();
-            tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
-            tcb.domain = get_current_domain();
-            // #[cfg(feature="DEBUG_BUILD")]
-            // unsafe {
-            //     tcbDebugAppend(tcb as *mut tcb_t);
-            // }
-            return cap_t::new_thread_cap(tcb.get_ptr());
-        }
-
-        ObjectType::seL4_ARM_SmallPageObject => cap_t::new_frame_cap(
-            device_mem,
-            vm_rights_t::VMReadWrite as _,
-            0,
-            ARM_Small_Page,
-            asidInvalid,
-            region_base,
-        ),
         ObjectType::CapTableObject => cap_t::new_cnode_cap(user_size, 0, 0, region_base),
         ObjectType::NotificationObject => cap_t::new_notification_cap(0, 1, 1, region_base),
         ObjectType::EndpointObject => cap_t::new_endpoint_cap(0, 1, 1, 1, 1, region_base),
         ObjectType::UnytpedObject => cap_t::new_untyped_cap(0, device_mem, user_size, region_base),
-        // TODO: remove ARCH related object to arch-specific module.
-        ObjectType::seL4_ARM_PageUpperDirectoryObject => {
-            cap_t::new_page_upper_directory_cap(asidInvalid, region_base, 0, 0)
-        }
-        // TODO: remove ARCH related object to arch-specific module.
-        ObjectType::seL4_ARM_PageDirectoryObject => {
-            cap_t::new_page_directory_cap(asidInvalid, region_base, 0, 0)
-        }
-        // TODO: remove ARCH related object to arch-specific module.
-        ObjectType::seL4_ARM_PageTableObject => {
-            cap_t::new_page_table_cap(asidInvalid, region_base, 0, 0)
-        }
-        // TODO: remove ARCH related object to arch-specific module.
-        ObjectType::seL4_ARM_PageGlobalDirectoryObject => {
-            cap_t::new_page_global_directory_cap(asidInvalid, region_base, 0)
-        }
-        // TODO: remove ARCH related object to arch-specific module.
-        ObjectType::seL4_ARM_LargePageObject => cap_t::new_frame_cap(
-            device_mem,
-            vm_rights_t::VMReadWrite as _,
-            0,
-            ARM_Large_Page,
-            asidInvalid,
-            region_base,
-        ),
-        _ => {
-            unimplemented!(
-                "create object: {:?} region: {:#x} - {:#x}",
-                obj_type,
-                region_base,
-                region_base + user_size
-            )
-        }
+        _ => arch_create_object(obj_type, region_base, user_size, device_mem),
     }
-    // match obj_type {
-    //     ObjectType::TCBObject => {
-    //         let tcb = convert_to_mut_type_ref::<tcb_t>(region_base + TCB_OFFSET);
-    //         tcb.init();
-    //         tcb.tcbTimeSlice = CONFIG_TIME_SLICE;
-    //         tcb.domain = get_current_domain();
-    //         unsafe {
-    //             tcbDebugAppend(tcb as *mut tcb_t);
-    //         }
-    //         return cap_t::new_thread_cap(tcb.get_ptr());
-    //     }
-
-    //     ObjectType::EndpointObject => cap_t::new_endpoint_cap(0, 1, 1, 1, 1, region_base),
-
-    //     ObjectType::NotificationObject => cap_t::new_notification_cap(0, 1, 1, region_base),
-
-    //     ObjectType::CapTableObject => cap_t::new_cnode_cap(user_size, 0, 0, region_base),
-
-    //     ObjectType::UnytpedObject => cap_t::new_untyped_cap(0, device_mem, user_size, region_base),
-
-    //     ObjectType::PageTableObject => cap_t::new_page_table_cap(asidInvalid, region_base, 0, 0),
-
-    //     ObjectType::NormalPageObject | ObjectType::GigaPageObject | ObjectType::MegaPageObject => {
-    //         cap_t::new_frame_cap(
-    //             asidInvalid,
-    //             region_base,
-    //             obj_type.get_frame_type(),
-    //             vm_rights_t::VMReadWrite as usize,
-    //             device_mem as usize,
-    //             0,
-    //         )
-    //     }
-    // }
 }
 
 pub fn reset_untyped_cap(srcSlot: &mut cte_t) -> exception_t {
