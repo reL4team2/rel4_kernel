@@ -1,4 +1,7 @@
-use sel4_common::{arch::{vm_rights_t, ObjectType}, sel4_config::{asidInvalid, ARM_Large_Page, ARM_Small_Page}};
+use sel4_common::{
+    arch::{vm_rights_t, ObjectType},
+    sel4_config::{asidInvalid, ARM_Huge_Page, ARM_Large_Page, ARM_Small_Page},
+};
 use sel4_cspace::arch::cap_t;
 use sel4_vspace::pptr_t;
 
@@ -17,18 +20,6 @@ pub fn arch_create_object(
             asidInvalid,
             region_base,
         ),
-        ObjectType::seL4_ARM_PageUpperDirectoryObject => {
-            cap_t::new_page_upper_directory_cap(asidInvalid, region_base, 0, 0)
-        }
-        ObjectType::seL4_ARM_PageDirectoryObject => {
-            cap_t::new_page_directory_cap(asidInvalid, region_base, 0, 0)
-        }
-        ObjectType::seL4_ARM_PageTableObject => {
-            cap_t::new_page_table_cap(asidInvalid, region_base, 0, 0)
-        }
-        ObjectType::seL4_ARM_PageGlobalDirectoryObject => {
-            cap_t::new_page_global_directory_cap(asidInvalid, region_base, 0)
-        }
         ObjectType::seL4_ARM_LargePageObject => cap_t::new_frame_cap(
             device_mem,
             vm_rights_t::VMReadWrite as _,
@@ -37,6 +28,18 @@ pub fn arch_create_object(
             asidInvalid,
             region_base,
         ),
+        ObjectType::seL4_ARM_HugePageObject => cap_t::new_frame_cap(
+            device_mem,
+            vm_rights_t::VMReadWrite as _,
+            0,
+            ARM_Huge_Page,
+            asidInvalid,
+            region_base,
+        ),
+        ObjectType::seL4_ARM_VSpaceObject => cap_t::new_vspace_cap(asidInvalid, region_base, 0),
+        ObjectType::seL4_ARM_PageTableObject => {
+            cap_t::new_page_table_cap(asidInvalid, region_base, 0, 0)
+        }
         _ => {
             unimplemented!(
                 "create object: {:?} region: {:#x} - {:#x}",

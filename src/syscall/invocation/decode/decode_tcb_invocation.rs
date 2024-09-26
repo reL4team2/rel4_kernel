@@ -157,11 +157,7 @@ fn decode_read_registers(
     invoke_tcb_read_registers(thread, flags & BIT!(ReadRegisters_suspend), n, 0, call)
 }
 
-fn decode_write_registers(
-    cap: &cap_t,
-    length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_write_registers(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 2 {
         unsafe {
             debug!("TCB CopyRegisters: Truncated message.");
@@ -196,11 +192,7 @@ fn decode_write_registers(
     invoke_tcb_write_registers(thread, flags & BIT!(0), w, 0, buffer)
 }
 
-fn decode_copy_registers(
-    cap: &cap_t,
-    _length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_copy_registers(cap: &cap_t, _length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     let flags = get_syscall_arg(0, buffer);
 
     let source_cap = get_extra_cap_by_index(0).unwrap().cap;
@@ -369,11 +361,7 @@ fn decode_set_priority(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> e
     )
 }
 
-fn decode_set_mc_priority(
-    cap: &cap_t,
-    length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_set_mc_priority(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 1 || get_extra_cap_by_index(0).is_none() {
         debug!("TCB SetMCPPriority: Truncated message.");
         unsafe {
@@ -405,11 +393,7 @@ fn decode_set_mc_priority(
     invoke_tcb_set_mcp(convert_to_mut_type_ref::<tcb_t>(cap.get_tcb_ptr()), new_mcp)
 }
 
-fn decode_set_sched_params(
-    cap: &cap_t,
-    length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_set_sched_params(cap: &cap_t, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 2 || get_extra_cap_by_index(0).is_some() {
         debug!("TCB SetSchedParams: Truncated message.");
         unsafe {

@@ -1,10 +1,10 @@
+pub(crate) mod arch;
 pub mod decode;
 mod invoke_cnode;
 pub mod invoke_irq;
 mod invoke_mmu_op;
 mod invoke_tcb;
 mod invoke_untyped;
-pub(crate) mod arch;
 
 use core::intrinsics::unlikely;
 

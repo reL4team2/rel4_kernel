@@ -1,7 +1,9 @@
-use sel4_common::{arch::{vm_rights_t, ObjectType}, sel4_config::asidInvalid};
+use sel4_common::{
+    arch::{vm_rights_t, ObjectType},
+    sel4_config::asidInvalid,
+};
 use sel4_cspace::arch::cap_t;
 use sel4_vspace::pptr_t;
-
 
 pub fn arch_create_object(
     obj_type: ObjectType,

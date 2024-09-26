@@ -46,20 +46,20 @@ pub fn clear_memory(ptr: *mut u8, bits: usize) {
 //                         addrFromPPtr(ptr));
 // }
 
-#[cfg(target_arch = "aarch64")]
-#[inline]
-pub fn clear_memory_pt(ptr: *mut u8, bits: usize) {
-    use sel4_vspace::{clean_cache_range_pou, pptr_to_paddr};
+// #[cfg(target_arch = "aarch64")]
+// #[inline]
+// pub fn clear_memory_pt(ptr: *mut u8, bits: usize) {
+//     use sel4_vspace::{clean_cache_range_pou, pptr_to_paddr};
 
-    unsafe {
-        core::slice::from_raw_parts_mut(ptr, BIT!(bits)).fill(0);
-        clean_cache_range_pou(
-            ptr as usize,
-            ptr.add(BIT!(bits) - 1) as usize,
-            pptr_to_paddr(ptr as usize),
-        );
-    }
-}
+//     unsafe {
+//         core::slice::from_raw_parts_mut(ptr, BIT!(bits)).fill(0);
+//         clean_cache_range_pou(
+//             ptr as usize,
+//             ptr.add(BIT!(bits) - 1) as usize,
+//             pptr_to_paddr(ptr as usize),
+//         );
+//     }
+// }
 
 #[inline]
 #[cfg(target_arch = "aarch64")]
