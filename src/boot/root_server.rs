@@ -442,7 +442,7 @@ unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_regio
 #[cfg(target_arch = "aarch64")]
 unsafe fn rust_create_it_address_space(root_cnode_cap: &cap_t, it_v_reg: v_region_t) -> cap_t {
     // create the PGD
-    let vspace_cap = cap_t::new_page_global_directory_cap(IT_ASID, rootserver.vspace, 1);
+    let vspace_cap = cap_t::new_vspace_cap(IT_ASID, rootserver.vspace, 1);
     let ptr = root_cnode_cap.get_cap_ptr() as *mut cte_t;
     let slot_pos_before = ndks_boot.slot_pos_cur;
     write_slot(ptr.add(seL4_CapInitThreadVspace), vspace_cap.clone());

@@ -67,7 +67,7 @@ extern "C" fn decodeARMMMUInvocation(
 pub fn set_vm_root_for_flush(vspace: usize, asid: asid_t) -> bool {
     let thread_root = get_currenct_thread().get_cspace(tcbVTable).cap;
 
-    if thread_root.is_valid_native_root() && thread_root.get_pgd_base_ptr() == vspace as usize {
+    if thread_root.is_valid_native_root() && thread_root.get_vs_base_ptr() == vspace as usize {
         return false;
     }
 

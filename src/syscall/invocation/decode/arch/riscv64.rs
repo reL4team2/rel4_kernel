@@ -108,11 +108,7 @@ fn decode_frame_invocation(
     }
 }
 
-fn decode_asid_control(
-    label: MessageLabel,
-    length: usize,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_asid_control(label: MessageLabel, length: usize, buffer: &seL4_IPCBuffer) -> exception_t {
     if label != MessageLabel::RISCVASIDControlMakePool {
         unsafe {
             current_syscall_error._type = seL4_IllegalOperation;
@@ -249,11 +245,7 @@ fn decode_asid_pool(label: MessageLabel, cte: &mut cte_t) -> exception_t {
     }
 }
 
-fn decode_frame_map(
-    length: usize,
-    frame_slot: &mut cte_t,
-    buffer: &seL4_IPCBuffer,
-) -> exception_t {
+fn decode_frame_map(length: usize, frame_slot: &mut cte_t, buffer: &seL4_IPCBuffer) -> exception_t {
     if length < 3 || get_extra_cap_by_index(0).is_none() {
         debug!("RISCVPageMap: Truncated message.");
         unsafe {

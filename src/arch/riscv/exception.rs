@@ -13,31 +13,31 @@ use crate::syscall::{
 use log::debug;
 use sel4_common::arch::ArchReg::*;
 use sel4_common::fault::seL4_Fault_t;
+use sel4_common::print;
 use sel4_common::sel4_config::seL4_MsgMaxLength;
 use sel4_common::structures::exception_t;
 use sel4_cspace::arch::CapTag;
-use sel4_common::print;
 use sel4_task::{activateThread, get_currenct_thread, schedule};
 
 #[no_mangle]
 pub fn handleUnknownSyscall(w: isize) -> exception_t {
-	let thread = get_currenct_thread();
+    let thread = get_currenct_thread();
     if w == SysDebugPutChar {
-		print!("{}",thread.tcbArch.get_register(Cap) as u8 as char);
+        print!("{}", thread.tcbArch.get_register(Cap) as u8 as char);
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugDumpScheduler {
-		// unimplement debug
+        // unimplement debug
         // println!("debug dump scheduler");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugHalt {
-		// unimplement debug
+        // unimplement debug
         // println!("debug halt");
         return exception_t::EXCEPTION_NONE;
     }
     if w == SysDebugSnapshot {
-		// unimplement debug
+        // unimplement debug
         // println!("debug snap shot");
         return exception_t::EXCEPTION_NONE;
     }
@@ -68,7 +68,7 @@ pub fn handleUnknownSyscall(w: isize) -> exception_t {
             debug!("SysDebugNameThread: Name too long, halting");
             halt();
         }
-		
+
         // setThreadName(TCB_PTR(cap_thread_cap_get_capTCBPtr(lu_ret.cap)), name);
         return exception_t::EXCEPTION_NONE;
     }
