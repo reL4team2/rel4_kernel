@@ -11,6 +11,7 @@ use smoltcp::socket::tcp::{Socket, SocketBuffer};
 use smoltcp::time::Instant;
 use smoltcp::wire::{EthernetAddress, HardwareAddress, IpAddress, IpCidr};
 use spin::{Lazy, Mutex};
+use crate::common::sbi::{get_cycle, get_time};
 use crate::common::sel4_config::PPTR_BASE_OFFSET;
 use crate::vspace::{kpptr_to_paddr, pptr_to_paddr};
 use crate::common::sel4_config::KERNEL_ELF_BASE_OFFSET;
@@ -63,11 +64,50 @@ pub static AXI_ETH: Lazy<Arc<Mutex<AxiEthernet>>> = Lazy::new(||  Arc::new(Mutex
     AXI_NET_CONFIG.eth_baseaddr, AXI_NET_CONFIG.dma_baseaddr
 ))));
 
+pub type Matrix<const N: usize> = [[u64; N]; N];
+
+fn init_matrix<const N: usize>() -> Matrix<N> {
+    let mut matrix = [[0u64; N]; N];
+    for i in 0..N {
+        for j in 0..N {
+            matrix[i][j] = (i * N + j + 1) as u64;
+        }
+    }
+    matrix
+}
+
+fn matrix_multiply<const N: usize>(matrix1: &Matrix<N>, matrix2: &Matrix<N>) -> Matrix<N> {
+    let mut result = [[0u64; N]; N];
+
+    for i in 0..N {
+        for j in 0..N {
+            for k in 0..N {
+                result[i][j] += matrix1[i][k] * matrix2[k][j];
+            }
+        }
+    }
+
+    result
+}
+
+pub fn matrix_test<const N: usize>() {
+    let a = init_matrix::<N>();
+    let b = init_matrix::<N>();
+    let _c = matrix_multiply::<N>(&a, &b);
+}
+
 pub fn net_init() {
+    let start = get_cycle();
+    matrix_test::<16>();
+    let end = get_cycle();
+    debug!("matrix test: {}", end - start);
+    loop {
+
+    }
     dma_init();
     eth_init();
     // eth_recv();
-    // tcp_test();
+    tcp_test();
     loop {
 
     }
@@ -180,7 +220,10 @@ impl TxToken for AxiNet {
         // debug!("tmp: {:#x}, {:#x}", tmp, buf_ptr as usize);
 
         let buf = BufPtr::new(NonNull::new(buf_ptr).unwrap(), len);
+        let start = get_time();
         let mut tbuf = self.dma.tx_submit_with_translate(buf, kpptr_to_paddr).unwrap().wait().unwrap();
+        let end = get_time();
+        debug!("send cost: {}", end - start);
         let vptr = (tbuf.as_mut_ptr() as usize + KERNEL_ELF_BASE_OFFSET) as *mut u8;
         let buf = unsafe { core::slice::from_raw_parts_mut(vptr, tbuf.len()) };
         let _box_buf = unsafe { Box::from_raw(buf) };
@@ -195,6 +238,7 @@ impl RxToken for AxiNet {
         where
             F: FnOnce(&mut [u8]) -> R,
     {
+        // let start = get_cycle();
         let mtu = self.capabilities().max_transmission_unit;
         let buffer = vec![0u8; mtu].into_boxed_slice();
         let len = buffer.len();
@@ -205,6 +249,8 @@ impl RxToken for AxiNet {
         let vptr = (rbuf.as_mut_ptr() as usize + KERNEL_ELF_BASE_OFFSET) as *mut u8;
         let buf = unsafe { core::slice::from_raw_parts_mut(vptr, rbuf.len()) };
         let mut box_buf = unsafe { Box::from_raw(buf) };
+        // let end = get_cycle();
+        // debug!("recv cost: {}", end - start);
         f(&mut box_buf)
     }
 }
@@ -284,7 +330,10 @@ pub fn tcp_test() {
     }
     let socket_handle = SOCKET_SET.lock().add(tcp_socket);
     loop {
+        // let start = get_time();
         iface_poll();
+        // let end = get_time();
+        // debug!("recv cost: {}", end - start);
         let mut socket_sets = SOCKET_SET.lock();
         let tcp_socket = socket_sets.get_mut::<Socket>(socket_handle);
         if tcp_socket.can_recv() {
@@ -297,6 +346,9 @@ pub fn tcp_test() {
             }
         }
         drop(socket_sets);
+        // let start = get_time();
         iface_poll();
+        // let end = get_time();
+        // debug!("send cost: {}", end - start);
     }
 }

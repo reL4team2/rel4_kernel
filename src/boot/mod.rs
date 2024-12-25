@@ -46,7 +46,7 @@ use crate::uintc::test_uintr;
 pub static ksNumCPUs: Mutex<usize> = Mutex::new(0);
 pub static node_boot_lock: Mutex<usize> = Mutex::new(0);
 
-pub static mut cpu_prio: [usize; CONFIG_MAX_NUM_NODES] = [false; CONFIG_MAX_NUM_NODES];
+pub static mut cpu_prio: [usize; CONFIG_MAX_NUM_NODES] = [256; CONFIG_MAX_NUM_NODES];
 
 #[no_mangle]
 #[link_section = ".boot.bss"]

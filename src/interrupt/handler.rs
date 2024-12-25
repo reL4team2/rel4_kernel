@@ -89,31 +89,31 @@ pub fn handleInterrupt(irq: usize) {
             if handler_cap.get_cap_type() == CapTag::CapNotificationCap
                 && handler_cap.get_nf_can_send() != 0 {
                 let ntfn = convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr());
-                if let Some(tcb) = convert_to_option_mut_type_ref::<tcb_t>(ntfn.get_bound_tcb()) {
-                    if let Some(cid) = tcb.asyncSysHandlerCid {
-                        for item in unsafe { &mut NEW_BUFFER_MAP } {
-                            if item.cid == cid {
-                                let new_buffer = &mut item.buf;
-                                let mut item = IPCItem::default();
-                                item.msg_info = 1;
-                                new_buffer.req_items.write_free_item(&item).unwrap();
-                                if new_buffer.recv_req_status.load(SeqCst) == false {
-                                    NET_INTR_CNT += 1;
-                                    new_buffer.recv_req_status.store(true, SeqCst);
-                                    send_net_uintr();
-                                    // debug!("NET INTR CNT: {}", NET_INTR_CNT);
-                                }
-                                break;
-                            }
-                        }
-                    } else {
-                        send_net_uintr();
-                    }
-                }
+                // if let Some(tcb) = convert_to_option_mut_type_ref::<tcb_t>(ntfn.get_bound_tcb()) {
+                //     if let Some(cid) = tcb.asyncSysHandlerCid {
+                //         for item in unsafe { &mut NEW_BUFFER_MAP } {
+                //             if item.cid == cid {
+                //                 let new_buffer = &mut item.buf;
+                //                 let mut item = IPCItem::default();
+                //                 item.msg_info = 1;
+                //                 new_buffer.req_items.write_free_item(&item).unwrap();
+                //                 if new_buffer.recv_req_status.load(SeqCst) == false {
+                //                     NET_INTR_CNT += 1;
+                //                     new_buffer.recv_req_status.store(true, SeqCst);
+                //                     send_net_uintr();
+                //                     // debug!("NET INTR CNT: {}", NET_INTR_CNT);
+                //                 }
+                //                 break;
+                //             }
+                //         }
+                //     } else {
+                //         send_net_uintr();
+                //     }
+                // }
                 // NET_INTR_CNT += 1;
                 // debug!("NET_INTR_CNT: {}", NET_INTR_CNT);
                 // convert_to_mut_type_ref::<notification_t>(handler_cap.get_nf_ptr()).send_signal(1);
-                // ntfn.send_signal(1);
+                ntfn.send_signal(1);
 
             } else {
                 debug!("no ntfn signal");
@@ -131,9 +131,10 @@ pub fn handleInterrupt(irq: usize) {
             //     // debug!("wake cid: {}", item.cid.0);
             //     // coroutine_wake(&item.cid);
             // }
-            if get_currenct_thread().get_ptr() != get_idle_thread().get_ptr() {
-                coroutine_run_until_blocked();
-            }
+            // if get_currenct_thread().get_ptr() != get_idle_thread().get_ptr() {
+            //     coroutine_run_until_blocked();
+            // }
+            coroutine_run_until_blocked();
             timerTick();
             resetTimer();
         }

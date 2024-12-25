@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use core::arch::asm;
 use riscv::register::time;
 
 const SBI_SET_TIMER: usize = 0;
@@ -58,6 +59,20 @@ pub fn remote_sfence_vma(hart_mask: usize, start: usize, size: usize) {
     sbi_call(SBI_REMOTE_SFENCE_VMA, virt_addr_hart_mask, 0, 0);
 }
 
+#[inline]
 pub fn get_time() -> usize {
-    time::read()
+    let n: usize;
+    unsafe {
+        asm!("rdtime {0}", out(reg) n);
+    }
+    n
+}
+
+#[inline(always)]
+pub fn get_cycle() -> usize {
+    let n: usize;
+    unsafe {
+        asm!("rdcycle {0}", out(reg) n);
+    }
+    n
 }

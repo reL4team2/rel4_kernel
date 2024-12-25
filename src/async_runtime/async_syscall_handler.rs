@@ -12,10 +12,12 @@ use crate::vspace::{checkVPAlignment, kpptr_to_paddr, pptr_to_paddr, find_vspace
 use crate::uintc::{KERNEL_SENDER_POOL_IDX, NET_UINTR_IDX, UIntrReceiver, UIntrSTEntry};
 use core::sync::atomic::Ordering::SeqCst;
 use core::intrinsics::unlikely;
+use crate::common::sbi::get_time;
 use crate::kernel::boot::current_syscall_error;
 use crate::syscall::{alignUp, FREE_INDEX_TO_OFFSET, GET_FREE_REF, invocation::{invoke_cnode::*, invoke_untyped::invoke_untyped_retype, invoke_mmu_op::*}, invocation::decode::decode_untyped_invocation::{check_object_type, check_cnode_slot}};
 use crate::syscall::utils::lookup_slot_for_cnode_op;
 use crate::config::USER_TOP;
+use crate::utils::busy_wait;
 // 每个线程对应一个内核syscall handler协程
 // 每个线程在用户态只能发现自己的内核协程不在线
 // 当线程陷入内核去激活协程时，所有的内核协程都不在线（因为内核独占）
@@ -37,9 +39,11 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
     }
     let new_buffer = convert_to_mut_type_ref::<NewBuffer>(new_buffer_cap.get_frame_base_ptr());
     // debug!("async_syscall_handler: new_buffer_cap: {}, new_buffer_ptr: {:#x}", new_buffer_cap.get_cap_ptr(), new_buffer_cap.get_frame_base_ptr());
-    let badge = ntfn_cap.get_nf_badge();
+    // let badge = ntfn_cap.get_nf_badge();
+    let mut need_switch = false;
     loop {
         if let Some(mut item) = new_buffer.req_items.get_first_item() {
+            need_switch = false;
             let label: AsyncMessageLabel = AsyncMessageLabel::from(item.msg_info);
             // debug!("async_syscall_handler: handle async syscall: {:?}", label);
             match label {
@@ -90,6 +94,11 @@ pub async fn async_syscall_handler(ntfn_cap: cap_t, new_buffer_cap: cap_t, tcb: 
                 }
             }
         } else {
+            // if !need_switch {
+            //     need_switch = true;
+            //     busy_wait(2000);
+            //     continue;
+            // }
             // debug!("handler: else");
             new_buffer.recv_req_status.store(false, SeqCst);
             yield_now().await;

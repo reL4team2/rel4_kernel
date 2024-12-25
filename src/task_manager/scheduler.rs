@@ -547,7 +547,7 @@ fn idle_thread() {
 }
 
 pub fn get_idle_cpu_index(prio: usize) -> Option<usize> {
-    unsafe {    
+    unsafe {
         for (index, core_prio) in cpu_prio.into_iter().enumerate() {
             if prio < core_prio {
                 return Some(index);
