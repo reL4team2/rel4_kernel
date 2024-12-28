@@ -20,7 +20,7 @@ lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 rv-plic = { git = "https://github.com/duskmoon314/rv-plic" }
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "a35c6e6" }
 axi-ethernet = { git = "https://github.com/zflcs/axi-ethernet.git" }
-axi-dma = { git = "https://github.com/rel4team/axi-dma.git" }
+axi-dma = { git = "https://github.com/reL4team2/axi-dma.git" }
 
 [dependencies.smoltcp]
 git = "https://github.com/smoltcp-rs/smoltcp.git"
